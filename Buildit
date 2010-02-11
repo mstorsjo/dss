@@ -93,7 +93,7 @@ case $PLAT in
 		LINKER='gcc'
  		MAKE=make
  		
-		COMPILER_FLAGS="-D_REENTRANT -D__USE_POSIX -D__linux__ -pipe"
+		COMPILER_FLAGS="-D_REENTRANT -D__USE_POSIX -D__linux__ -pipe -D__STDC_LIMIT_MACROS"
         INCLUDE_FLAG="-include"
 		
 		CORE_LINK_LIBS="-lpthread -ldl -lstdc++ -lm -lcrypt"

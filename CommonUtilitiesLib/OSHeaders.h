@@ -128,9 +128,13 @@
 #if __LP64__
 	#define _S32BITARG_ "d"
 	#define _U32BITARG_ "u"
+        #define _SPOINTERSIZEARG_ _S64BITARG_
+        #define _UPOINTERSIZEARG_ _U64BITARG_
 #else
 	#define _S32BITARG_ "ld"
 	#define _U32BITARG_ "lu"
+        #define _SPOINTERSIZEARG_ _S32BITARG_
+        #define _UPOINTERSIZEARG_ _U32BITARG_
 #endif
 
     /* paths */
@@ -147,16 +151,27 @@
     #define QT_PATH_SEPARATOR       '/'
 
     /* Typedefs */
+
+#include <stdint.h>
+#define kSInt16_Max INT16_MAX
+#define kUInt16_Max UINT16_MAX
+
+#define kSInt32_Max INT32_MAX
+#define kUInt32_Max UINT32_MAX
+
+#define kSInt64_Max INT64_MAX
+#define kUInt64_Max UINT64_MAX
+
     typedef signed long         PointerSizedInt;
     typedef unsigned long       PointerSizedUInt;
-    typedef unsigned char       UInt8;
-    typedef signed char         SInt8;
-    typedef unsigned short      UInt16;
-    typedef signed short        SInt16;
-    typedef unsigned int	UInt32;
-    typedef signed int		SInt32;
-    typedef signed int int 	SInt64;
-    typedef unsigned int int 	UInt64;
+    typedef uint8_t             UInt8;
+    typedef int8_t              SInt8;
+    typedef uint16_t            UInt16;
+    typedef int16_t             SInt16;
+    typedef uint32_t            UInt32;
+    typedef int32_t             SInt32;
+    typedef int64_t             SInt64;
+    typedef uint64_t            UInt64;
     typedef float               Float32;
     typedef double              Float64;
     typedef UInt16              Bool16;
