@@ -265,7 +265,8 @@ QTSS_Error LogError(QTSS_RoleParamPtr inParamBlock)
     
                 sDupErrorStringCount = 0;
             }
-            ::strlcpy(sLastErrorString, inParamBlock->errorParams.inBuffer, sizeof(sLastErrorString));
+            ::strncpy(sLastErrorString, inParamBlock->errorParams.inBuffer, sizeof(sLastErrorString));
+            sLastErrorString[sizeof(sLastErrorString)-1] = '\0';
         
         }
 
