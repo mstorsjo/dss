@@ -680,9 +680,11 @@ void    QTSServer::LoadCompiledInModules()
     (void)AddModule(theWebDebug);
 #endif
 
+#ifdef __MacOSX__
     QTSSModule* theQTSSDSAuthModule = new QTSSModule("QTSSDSAuthModule");
     (void)theQTSSDSAuthModule->SetupModule(&sCallbacks, &QTSSDSAuthModule_Main);
     (void)AddModule(theQTSSDSAuthModule); 
+#endif
 
     QTSSModule* theQTACCESSmodule = new QTSSModule("QTSSAccessModule");
     (void)theQTACCESSmodule->SetupModule(&sCallbacks, &QTSSAccessModule_Main);
