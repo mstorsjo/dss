@@ -85,7 +85,7 @@
 #include "RTCPTask.h"
 #include "QTSSFile.h"
 
-#include "RTPStream3GPP.h"
+#include "RTPStream3gpp.h"
 #include "RTSPRequest3GPP.h"
 
 // CLASS DEFINITIONS
