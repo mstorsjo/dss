@@ -22,6 +22,7 @@ CCFLAGS += -I../CommonUtilitiesLib
 CCFLAGS += -I../PrefsSourceLib
 CCFLAGS += -I../APIStubLib
 CCFLAGS += -I../RTPMetaInfoLib
+CCFLAGS += -I../RTCPUtilitiesLib
 
 # EACH DIRECTORY WITH A STATIC LIBRARY MUST BE APPENDED IN THIS MANNER TO THE LINKOPTS
 
@@ -33,6 +34,7 @@ CFILES =
 
 CPPFILES = 	StreamingLoadTool.cpp \
                         ../SafeStdLib/InternalStdLib.cpp \
+			../RTCPUtilitiesLib/RTCPPacket.cpp \
 			../RTSPClientLib/ClientSocket.cpp \
 			../RTSPClientLib/RTSPClient.cpp \
 			../RTSPClientLib/ClientSession.cpp \
