@@ -1,0 +1,60 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+clean:
+	./Buildit clean
+	dh  $@
+
+override_dh_auto_build:
+	./Buildit
+
+override_dh_auto_install: BINDIR=$(CURDIR)/debian/darwin-streaming-server/usr/local/bin
+override_dh_auto_install: SBINDIR=$(CURDIR)/debian/darwin-streaming-server/usr/local/sbin
+override_dh_auto_install: ETCDIR=$(CURDIR)/debian/darwin-streaming-server/etc/streaming
+override_dh_auto_install: VARDIR=$(CURDIR)/debian/darwin-streaming-server/var/streaming
+override_dh_auto_install: MOVIEDIR=$(CURDIR)/debian/darwin-streaming-server/usr/local/movies
+override_dh_auto_install:
+	mkdir -p $(BINDIR)
+	mkdir -p $(SBINDIR)
+	mkdir -p $(ETCDIR)
+	mkdir -p $(VARDIR)
+	mkdir -p $(MOVIEDIR)
+	cp DarwinStreamingServer $(SBINDIR)
+	cp PlaylistBroadcaster.tproj/PlaylistBroadcaster $(BINDIR)
+	cp MP3Broadcaster/MP3Broadcaster $(BINDIR)
+	cp qtpasswd.tproj/qtpasswd $(BINDIR)
+	cp APIModules/QTSSHomeDirectoryModule/createuserstreamingdir $(BINDIR)
+	cp StreamingLoadTool/StreamingLoadTool $(BINDIR)
+	mkdir -p $(SBINDIR)/StreamingServerModules
+	cp APIModules/QTSSHomeDirectoryModule/QTSSHomeDirectoryModule $(SBINDIR)/StreamingServerModules
+	cp APIModules/QTSSRefMovieModule/QTSSRefMovieModule $(SBINDIR)/StreamingServerModules
+	-./DarwinStreamingServer -x -c $(ETCDIR)/streamingserver.xml
+
+	cp qtgroups qtusers $(ETCDIR)
+	cp relayconfig.xml-Sample $(ETCDIR)
+	cp StreamingLoadTool/streamingloadtool.conf $(ETCDIR)
+
+	cp sample* $(MOVIEDIR)
+
+	cp Documentation/3rdPartyAcknowledgements.rtf $(VARDIR)
+	cp Documentation/readme.txt $(VARDIR)
+
+	cp WebAdmin/src/streamingadminserver.pl $(SBINDIR)
+	cp -R WebAdmin/WebAdminHtml $(VARDIR)/AdminHtml
+	mkdir -p $(VARDIR)/logs
+	mkdir -p $(VARDIR)/playlists
+
+override_dh_usrlocal:
+
+%:
+	dh  $@
+
+.PHONY: clean

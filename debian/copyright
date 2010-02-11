@@ -1,0 +1,24 @@
+This work was packaged for Debian by:
+
+    Martin Storsjo <martin@martin.st> on Thu, 11 Feb 2010 13:59:54 +0100
+
+It was downloaded from <http://dss.macosforge.org/>
+
+Upstream Author(s):
+
+    Apple
+
+Copyright:
+
+    Copyright (c) 1999-2008 Apple Inc.  All Rights Reserved.
+
+License:
+
+    Apple Public Source License Version 2.0
+
+The Debian packaging is:
+
+    Copyright (C) 2010 Martin Storsjo <martin@martin.st>
+
+and is licensed under the GPL version 3, 
+see `/usr/share/common-licenses/GPL-3'.

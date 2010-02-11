@@ -1,0 +1,13 @@
+Source: darwin-streaming-server
+Section: unknown
+Priority: extra
+Maintainer: Martin Storsjo <martin@martin.st>
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.3
+Homepage: http://dss.macosforge.org/
+
+Package: darwin-streaming-server
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Darwin Streaming Server
+ <insert long description, indented with spaces>
