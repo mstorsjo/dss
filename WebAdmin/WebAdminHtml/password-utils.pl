@@ -247,7 +247,7 @@ sub RemoveUserFromGroup {
 			$groups{$selectedGroup} = join(' ', @newUsernames);
 		}
 	}
-	SaveGroupsFile(groupsfilepath, \%groups);
+	SaveGroupsFile($groupsfilepath, \%groups);
 }
 
 # DeleteUser(qtpasswdpath, userfilepath, groupsfilepath, username)
