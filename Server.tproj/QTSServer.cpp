@@ -70,7 +70,9 @@
 #include "QTSSAdminModule.h"
 #include "QTSSAccessModule.h"
 #include "QTSSMP3StreamingModule.h"
+#if __MacOSX__
 #include "QTSSDSAuthModule.h"
+#endif
 #if MEMORY_DEBUGGING
 #include "QTSSWebDebugModule.h"
 #endif
