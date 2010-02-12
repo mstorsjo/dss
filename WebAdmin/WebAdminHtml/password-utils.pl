@@ -292,16 +292,17 @@ sub DeleteUser {
 	return $code;
 }
 
-# AddOrEditBroadcastUser(qtpasswdpath, userfilepath, username, password)
+# AddOrEditBroadcastUser(qtpasswdpath, userfilepath, groupsfilepath, username, password)
 sub AddOrEditBroadcastUser {
 	my $qtpasswdpath = $_[0];
 	my $userfilepath = $_[1];
-	my $username = $_[2];
-	my $password = $_[3];
+	my $groupsfilepath = $_[2];
+	my $username = $_[3];
+	my $password = $_[4];
 		
 	if ($^O eq "MSWin32")
 	{
-		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -p \"$password\" \"$username\"";
+		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -p \"$password\" \"$username\"";
 		$progName = qq($qtpasswdpath);
 		eval "require Win32::Process";
 		if(!$@) {
@@ -322,10 +323,10 @@ sub AddOrEditBroadcastUser {
 	else
 	{
 	
-		my $initArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -R broadcaster ";
+		my $initArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -R broadcaster ";
 		system($initArgs);
 		
-		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -p \'$password\' -A broadcaster \'$username\'";
+		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -p \'$password\' -A broadcaster \'$username\'";
 		if(system($programArgs) == 0) {
 			$code = 200;
 		}

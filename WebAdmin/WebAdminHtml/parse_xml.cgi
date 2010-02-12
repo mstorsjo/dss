@@ -788,7 +788,7 @@ sub ChangeBroadcastPassword {
 			&passwordutils::DeleteUser($qtpasswdpath, $usersFilename, $groupsFilename, $oldBroadcastUser);
 		}
 		if (($query-{'allowUnrestrictedBroadcast'} ne '1') && ($query->{'new_user'} ne '')) {
-			&passwordutils::AddOrEditBroadcastUser($qtpasswdpath, $usersFilename, $query->{'new_user'}, $query->{'new_password1'});
+			&passwordutils::AddOrEditBroadcastUser($qtpasswdpath, $usersFilename, $groupsFilename, $query->{'new_user'}, $query->{'new_password1'});
 		}
 	}
 
