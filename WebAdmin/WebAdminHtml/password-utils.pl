@@ -193,7 +193,7 @@ sub ParseGroupsFile {
 	my $line;
 	my $lineUsernames;
 	
-	if (open(GROUPSFILE), $groupsfilepath) {
+	if (open(GROUPSFILE, $groupsfilepath)) {
 		while ($line = <GROUPSFILE>) {
 			if ($line =~ /([^:]*):(.*)/) {
 				$lineUsernames = $2;
