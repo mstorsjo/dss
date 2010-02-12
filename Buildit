@@ -86,7 +86,8 @@ case $PLAT in
 		;;		
 
 	Linux.i586 | \
-	Linux.i686)
+	Linux.i686 | \
+	Linux.x86_64)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
 		CPLUS=gcc
 		CCOMP=gcc
