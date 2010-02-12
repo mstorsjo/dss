@@ -215,7 +215,7 @@ sub SaveGroupsFile {
 	
 	if (open(GROUPSFILE, ">$groupsfilepath")) {
 		foreach $selectedGroup (keys %groups) {
-			print GROUPSFILE "$selectedGroup: " . $groups{$selectedGroup};
+			print GROUPSFILE "$selectedGroup: " . $groups{$selectedGroup} . "\n";
 		}
 		close(GROUPSFILE);
 	}
