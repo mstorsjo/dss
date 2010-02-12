@@ -228,7 +228,7 @@ sub RemoveUserFromGroup {
 	my $groupsfilepath = $_[0];
 	my $username = $_[1];
 	my $groupname = $_[2];
-	my %groupsRef = ParseGroupsFile($groupsfilepath);
+	my $groupsRef = ParseGroupsFile($groupsfilepath);
 	my %groups = %$groupsRef;
 	my $selectedGroup;
 	my $selectedUser;
