@@ -196,9 +196,10 @@ sub ParseGroupsFile {
 	if (open(GROUPSFILE, $groupsfilepath)) {
 		while ($line = <GROUPSFILE>) {
 			if ($line =~ /([^:]*):(.*)/) {
+				my $group = $1;
 				$lineUsernames = $2;
 				$lineUsernames =~ s/^\s+//; # remove leading white space
-				$groups{$1} = $lineUsernames;
+				$groups{$group} = $lineUsernames;
 			}
 		}
 	}
