@@ -66,5 +66,23 @@ echo admin: $username > $DEST/etc/streaming/qtgroups
 
 $DEST/bin/qtpasswd -f $DEST/etc/streaming/qtusers -F -d 'aGFja21l' > /dev/null
 
+cat<<EOF > $DEST/start.sh
+#!/bin/sh
 $DEST/sbin/streamingadminserver.pl -c $DEST/etc/streaming/streamingadminserver.conf
+EOF
+chmod a+x $DEST/start.sh
+
+cat<<EOF > $DEST/stop.sh
+#!/bin/sh
+user=\$(whoami)
+for i in \$(ps auxw | grep \$user | grep streamingadminserver.pl | grep -v grep | awk '{print \$2}'); do
+	kill \$i
+done
+for i in \$(ps auxw | grep \$user | grep DarwinStreamingServer | grep -v grep | awk '{print \$2}' | head -1); do
+	kill \$i
+done
+EOF
+chmod a+x $DEST/stop.sh
+
+$DEST/start.sh
 
