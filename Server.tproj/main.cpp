@@ -106,8 +106,7 @@ Bool16 sendtochild(int sig, pid_t myPID)
     return false;
 }
 
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/);
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/)
+void sigcatcher(int sig)
 {
 #if DEBUG
     qtss_printf("Signal %d caught\n", sig);
