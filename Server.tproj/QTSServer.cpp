@@ -132,6 +132,7 @@ PrefsSource*    QTSServer::sMessagesSource = NULL;
 
 QTSServer::~QTSServer()
 {
+    {
     //
     // Grab the server mutex. This is to make sure all gets & set values on this
     // object complete before we start deleting stuff
@@ -152,6 +153,12 @@ QTSServer::~QTSServer()
         (void)QTSServerInterface::GetModule(QTSSModule::kShutdownRole, x)->CallDispatch(QTSS_Shutdown_Role, NULL);
 
     OSThread::SetMainThreadData(NULL);
+
+    delete fRTPMap;
+    delete fSocketPool;
+    delete fSrvrMessages;
+    }
+    delete fSrvrPrefs;
 }
 
 Bool16 QTSServer::Initialize(XMLPrefsParser* inPrefsSource, PrefsSource* inMessagesSource, UInt16 inPortOverride, Bool16 createListeners)
