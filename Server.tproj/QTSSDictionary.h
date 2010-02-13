@@ -215,7 +215,7 @@ class QTSSDictionary : public QTSSStream
 		Bool16				fMyMutex;
 		Bool16				fLocked;
         
-        void DeleteAttributeData(DictValueElement* inDictValues, UInt32 inNumValues);
+        void DeleteAttributeData(DictValueElement* inDictValues, UInt32 inNumValues, QTSSDictionaryMap* theMap);
 };
 
 

@@ -60,12 +60,12 @@ QTSSDictionary::QTSSDictionary(QTSSDictionaryMap* inMap, OSMutex* inMutex)
 QTSSDictionary::~QTSSDictionary()
 {
     if (fMap != NULL)
-        this->DeleteAttributeData(fAttributes, fMap->GetNumAttrs());
+        this->DeleteAttributeData(fAttributes, fMap->GetNumAttrs(), fMap);
     if (fAttributes != NULL)
         delete [] fAttributes;
-    delete fInstanceMap;
-    this->DeleteAttributeData(fInstanceAttrs, fInstanceArraySize);
+    this->DeleteAttributeData(fInstanceAttrs, fInstanceArraySize, fInstanceMap);
     delete [] fInstanceAttrs;
+    delete fInstanceMap;
 	if (fMyMutex)
 		delete fMutexP;
 }
@@ -798,12 +798,20 @@ QTSS_Error QTSSDictionary::GetAttrInfoByName(const char* inAttrName, QTSSAttrInf
     return theErr;
 }
 
-void QTSSDictionary::DeleteAttributeData(DictValueElement* inDictValues, UInt32 inNumValues)
+void QTSSDictionary::DeleteAttributeData(DictValueElement* inDictValues, UInt32 inNumValues, QTSSDictionaryMap* theMap)
 {
     for (UInt32 x = 0; x < inNumValues; x++)
     {
-        if (inDictValues[x].fAllocatedInternally)
+        if (inDictValues[x].fAllocatedInternally) {
+            if ((theMap->GetAttrType(x) == qtssAttrDataTypeCharArray) &&
+                (inDictValues[x].fNumAttributes > 1)) {
+                UInt32 z = 0;
+                for (char **y = (char **) (inDictValues[x].fAttributeData.Ptr);
+                           z < inDictValues[x].fNumAttributes; z++)
+                    delete [] y[z];
+            }
             delete [] inDictValues[x].fAttributeData.Ptr;
+	}
     }
 }
 
