@@ -341,6 +341,7 @@ QTSS_Error QTSSDictionary::SetValue(QTSS_AttributeID inAttrID, UInt32 inIndex,
             // store off original string as first value in array
             *(char**)theAttrs[theMapIndex].fAttributeData.Ptr = temp;
                         // question: why isn't theAttrs[theMapIndex].fAllocatedInternally set to true?
+	    theAttrs[theMapIndex].fAllocatedInternally = true;
         }
     }
     else
