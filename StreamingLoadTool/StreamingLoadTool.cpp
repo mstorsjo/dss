@@ -108,9 +108,7 @@ UInt32 CalcStartTime(Bool16 inRandomThumb, UInt32 inMovieLength);
 extern char* optarg;
 
 #ifndef __Win32__
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/);
-
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/)
+void sigcatcher(int sig)
 {
 	//printf("sigcatcher =%d\n", sig);
 
