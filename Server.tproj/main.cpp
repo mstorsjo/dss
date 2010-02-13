@@ -580,7 +580,6 @@ int main(int argc, char * argv[])
     //This function starts, runs, and shuts down the server
     if (::StartServer(&theXMLParser, &theMessagesSource, thePort, statsUpdateInterval, theInitialState, dontFork, debugLevel, debugOptions) != qtssFatalErrorState)
     {    ::RunServer();
-         CleanPid(false);
          exit (EXIT_SUCCESS);
     }
     else
