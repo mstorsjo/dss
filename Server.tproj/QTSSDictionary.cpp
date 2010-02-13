@@ -407,7 +407,7 @@ QTSS_Error QTSSDictionary::SetValue(QTSS_AttributeID inAttrID, UInt32 inIndex,
         // The offset should be (attrLen * inIndex) and not (inLen * inIndex) 
         char** valuePtr = (char**)(theAttrs[theMapIndex].fAttributeData.Ptr + (attrLen * inIndex));
         if (inIndex < numValues)    // we're replacing an existing string
-            delete *valuePtr;
+            delete [] *valuePtr;
         *valuePtr = (char*)attributeBufferPtr;
     }
     
@@ -522,7 +522,7 @@ QTSS_Error QTSSDictionary::RemoveValue(QTSS_AttributeID inAttrID, UInt32 inIndex
     {
         // we need to delete the string
         char* str = *(char**)(theAttrs[theMapIndex].fAttributeData.Ptr + (theValueLen * inIndex));
-        delete str;
+        delete [] str;
     }
 
     //
