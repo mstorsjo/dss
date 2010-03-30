@@ -108,9 +108,7 @@ UInt32 CalcStartTime(Bool16 inRandomThumb, UInt32 inMovieLength);
 extern char* optarg;
 
 #ifndef __Win32__
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/);
-
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/)
+void sigcatcher(int sig)
 {
 	//printf("sigcatcher =%d\n", sig);
 
@@ -135,7 +133,7 @@ int main(int argc, char *argv[])
 #ifndef __Win32__
 	struct sigaction act;
 	
-#if defined(sun) || defined(i386) || defined (__MacOSX__) || defined(__powerpc__) || defined (__osf__) || defined (__sgi_cc__) || defined (__hpux__)
+#if defined(sun) || defined(i386) || defined (__MacOSX__) || defined(__powerpc__) || defined (__osf__) || defined (__sgi_cc__) || defined (__hpux__) || defined (__linux__)
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     act.sa_handler = (void(*)(int))&sigcatcher;
@@ -743,7 +741,7 @@ int main(int argc, char *argv[])
             
             bitsReceived += .5;
             
- 			printf("%5lu %6lu %8lu %6lu %6lu %6lu %9.0fk\n",
+ 			printf("%5"_U32BITARG_" %6"_U32BITARG_" %8"_U32BITARG_" %6"_U32BITARG_" %6"_U32BITARG_" %6"_U32BITARG_" %9.0fk\n",
 				ClientSession:: GetActiveConnections (),
 				ClientSession:: GetPlayingConnections (),
 				ClientSession:: GetConnectionAttempts (),
@@ -811,7 +809,7 @@ int main(int argc, char *argv[])
 	if (sLog != NULL)
 		::fclose(sLog);
 		
-	printf("%5lu %6lu %8lu %6lu %6lu %6lu %9.0fk\n",
+	printf("%5"_U32BITARG_" %6"_U32BITARG_" %8"_U32BITARG_" %6"_U32BITARG_" %6"_U32BITARG_" %6"_U32BITARG_" %9.0fk\n",
 		ClientSession:: GetActiveConnections (),
 		ClientSession:: GetPlayingConnections (),
 		ClientSession:: GetConnectionAttempts (),

@@ -679,11 +679,14 @@ void RunServer()
     //Now, make sure that the server can't do any work
     TaskThreadPool::RemoveThreads();
     
+    //delete sServer deletes the preferences, including the pid file,
+    //so clean it before deleting.
+    CleanPid(false);
+
     //now that the server is definitely stopped, it is safe to initate
     //the shutdown process
     delete sServer;
     
-    CleanPid(false);
     //ok, we're ready to exit. If we're quitting because of some fatal error
     //while running the server, make sure to let the parent process know by
     //exiting with a nonzero status. Otherwise, exit with a 0 status

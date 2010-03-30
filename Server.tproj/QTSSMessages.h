@@ -53,12 +53,19 @@ class QTSSMessages : public QTSSDictionary
         static void Initialize();
     
         QTSSMessages(PrefsSource* inMessages);
-        virtual ~QTSSMessages() {}
+        virtual ~QTSSMessages() {
+            for (UInt32 x = 0; x < numAttrs; x++)
+                if (attrBuffer[x] != NULL)
+                    delete [] attrBuffer[x];
+            delete [] attrBuffer;
+        }
         
 
         //Use the standard GetAttribute method in QTSSDictionary to retrieve messages
         
     private:
+        char**              attrBuffer;
+        UInt32              numAttrs;
     
         enum
         {

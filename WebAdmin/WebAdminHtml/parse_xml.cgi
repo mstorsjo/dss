@@ -774,12 +774,15 @@ sub ChangeBroadcastPassword {
 	my @broadcastUsersArray = @$broadcastUsersArrayRef;
 	my $oldBroadcastUser = '';
 	my $broadcastRestrictionString = '';
+	my $groupsRef = &passwordutils::ParseGroupsFile($groupsFilename);
+	my %groups = %$groupsRef;
+	$oldBroadcastUser = $groups{"broadcaster"} if exists($groups{"broadcaster"});
 	my ($currentAdminUsername, $currentAdminPass) = split(/:/, b64decode($auth));
 	my $qtpasswdpath = $ENV{"QTSSADMINSERVER_QTSSQTPASSWD"};
 	
-	if ($broadcastUsersArray[1] eq 'user') {
-		$oldBroadcastUser = $broadcastUsersArray[2];
-	}
+#	if ($broadcastUsersArray[1] eq 'user') {
+#		$oldBroadcastUser = $broadcastUsersArray[2];
+#	}
 	
 	# change the password in the passwords file
 	# work on a copy if it's the current admin user
@@ -788,7 +791,7 @@ sub ChangeBroadcastPassword {
 			&passwordutils::DeleteUser($qtpasswdpath, $usersFilename, $groupsFilename, $oldBroadcastUser);
 		}
 		if (($query-{'allowUnrestrictedBroadcast'} ne '1') && ($query->{'new_user'} ne '')) {
-			&passwordutils::AddOrEditBroadcastUser($qtpasswdpath, $usersFilename, $query->{'new_user'}, $query->{'new_password1'});
+			&passwordutils::AddOrEditBroadcastUser($qtpasswdpath, $usersFilename, $groupsFilename, $query->{'new_user'}, $query->{'new_password1'});
 		}
 	}
 

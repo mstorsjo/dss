@@ -193,12 +193,13 @@ sub ParseGroupsFile {
 	my $line;
 	my $lineUsernames;
 	
-	if (open(GROUPSFILE), $groupsfilepath) {
+	if (open(GROUPSFILE, $groupsfilepath)) {
 		while ($line = <GROUPSFILE>) {
 			if ($line =~ /([^:]*):(.*)/) {
+				my $group = $1;
 				$lineUsernames = $2;
 				$lineUsernames =~ s/^\s+//; # remove leading white space
-				$groups{$1} = $lineUsernames;
+				$groups{$group} = $lineUsernames;
 			}
 		}
 	}
@@ -214,7 +215,7 @@ sub SaveGroupsFile {
 	
 	if (open(GROUPSFILE, ">$groupsfilepath")) {
 		foreach $selectedGroup (keys %groups) {
-			print GROUPSFILE "$selectedGroup: " . $groups{$selectedGroup};
+			print GROUPSFILE "$selectedGroup: " . $groups{$selectedGroup} . "\n";
 		}
 		close(GROUPSFILE);
 	}
@@ -227,7 +228,7 @@ sub RemoveUserFromGroup {
 	my $groupsfilepath = $_[0];
 	my $username = $_[1];
 	my $groupname = $_[2];
-	my %groupsRef = ParseGroupsFile($groupsfilepath);
+	my $groupsRef = ParseGroupsFile($groupsfilepath);
 	my %groups = %$groupsRef;
 	my $selectedGroup;
 	my $selectedUser;
@@ -246,7 +247,7 @@ sub RemoveUserFromGroup {
 			$groups{$selectedGroup} = join(' ', @newUsernames);
 		}
 	}
-	SaveGroupsFile(groupsfilepath, \%groups);
+	SaveGroupsFile($groupsfilepath, \%groups);
 }
 
 # DeleteUser(qtpasswdpath, userfilepath, groupsfilepath, username)
@@ -292,16 +293,17 @@ sub DeleteUser {
 	return $code;
 }
 
-# AddOrEditBroadcastUser(qtpasswdpath, userfilepath, username, password)
+# AddOrEditBroadcastUser(qtpasswdpath, userfilepath, groupsfilepath, username, password)
 sub AddOrEditBroadcastUser {
 	my $qtpasswdpath = $_[0];
 	my $userfilepath = $_[1];
-	my $username = $_[2];
-	my $password = $_[3];
+	my $groupsfilepath = $_[2];
+	my $username = $_[3];
+	my $password = $_[4];
 		
 	if ($^O eq "MSWin32")
 	{
-		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -p \"$password\" \"$username\"";
+		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -p \"$password\" \"$username\"";
 		$progName = qq($qtpasswdpath);
 		eval "require Win32::Process";
 		if(!$@) {
@@ -322,10 +324,10 @@ sub AddOrEditBroadcastUser {
 	else
 	{
 	
-		my $initArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -R broadcaster ";
+		my $initArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -R broadcaster ";
 		system($initArgs);
 		
-		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -p \'$password\' -A broadcaster \'$username\'";
+		my $programArgs = "\"$qtpasswdpath\" -f \"$userfilepath\" -g \"$groupsfilepath\" -p \'$password\' -A broadcaster \'$username\'";
 		if(system($programArgs) == 0) {
 			$code = 200;
 		}

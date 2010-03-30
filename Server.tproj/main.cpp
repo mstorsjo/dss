@@ -106,8 +106,7 @@ Bool16 sendtochild(int sig, pid_t myPID)
     return false;
 }
 
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/);
-void sigcatcher(int sig, int /*sinfo*/, struct sigcontext* /*sctxt*/)
+void sigcatcher(int sig)
 {
 #if DEBUG
     qtss_printf("Signal %d caught\n", sig);
@@ -216,7 +215,7 @@ int main(int argc, char * argv[])
     //(void) ::signal(SIGPIPE, SIG_IGN);
     struct sigaction act;
     
-#if defined(sun) || defined(i386) || defined (__MacOSX__) || defined(__powerpc__) || defined (__osf__) || defined (__sgi_cc__) || defined (__hpux__)
+#if defined(sun) || defined(i386) || defined (__MacOSX__) || defined(__powerpc__) || defined (__osf__) || defined (__sgi_cc__) || defined (__hpux__) || defined (__linux__)
     sigemptyset(&act.sa_mask);
     act.sa_flags = 0;
     act.sa_handler = (void(*)(int))&sigcatcher;
@@ -580,7 +579,6 @@ int main(int argc, char * argv[])
     //This function starts, runs, and shuts down the server
     if (::StartServer(&theXMLParser, &theMessagesSource, thePort, statsUpdateInterval, theInitialState, dontFork, debugLevel, debugOptions) != qtssFatalErrorState)
     {    ::RunServer();
-         CleanPid(false);
          exit (EXIT_SUCCESS);
     }
     else

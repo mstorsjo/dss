@@ -131,8 +131,8 @@
         #define _SPOINTERSIZEARG_ _S64BITARG_
         #define _UPOINTERSIZEARG_ _U64BITARG_
 #else
-	#define _S32BITARG_ "ld"
-	#define _U32BITARG_ "lu"
+	#define _S32BITARG_ "d"
+	#define _U32BITARG_ "u"
         #define _SPOINTERSIZEARG_ _S32BITARG_
         #define _UPOINTERSIZEARG_ _U32BITARG_
 #endif
