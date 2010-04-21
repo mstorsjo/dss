@@ -221,10 +221,10 @@ QTSS_Error RelaySession::SetupRelaySession(SourceInfo* inInfo)
             theErr = QTSS_SetValue (fRelaySessionObject, sSourceRTSPPort, 0, &rtspPort, sizeof(rtspPort));  // source rtsp port
                         Assert(theErr == QTSS_NoErr);
                         
-            theErr = QTSS_SetValue (fRelaySessionObject, sSourceUsername, 0, username, sizeof(username));   // source username
+            theErr = QTSS_SetValue (fRelaySessionObject, sSourceUsername, 0, username, strlen(username));   // source username
                         Assert(theErr == QTSS_NoErr);
                         
-            theErr = QTSS_SetValue (fRelaySessionObject, sSourcePassword, 0, password, sizeof(password));   // source password  
+            theErr = QTSS_SetValue (fRelaySessionObject, sSourcePassword, 0, password, strlen(password));   // source password  
                         Assert(theErr == QTSS_NoErr);
         }
         

@@ -380,7 +380,7 @@ char*   RTSPSourceInfo::GetAnnounceSDP(UInt32 ipAddr, UInt32* newSDPLen)
                     added = true;
                     // add a c line before the first m line
                     char ipStr[50];
-                    char buff[50];
+                    char buff[50] = "";
                     StrPtrLen temp(buff);
                 
                     struct in_addr theIPAddr;
