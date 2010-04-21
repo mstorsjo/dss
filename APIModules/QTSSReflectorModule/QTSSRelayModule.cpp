@@ -1264,7 +1264,7 @@ void ResolveDNSAddr(XMLTag* tag)
     struct hostent* theHostent = ::gethostbyname(tag->GetValue());      
     if (theHostent != NULL)
     {
-        char buffer[50];
+        char buffer[50] = "";
         StrPtrLen temp(buffer);
         inAddr.s_addr = *(UInt32*)(theHostent->h_addr_list[0]);
         SocketUtils::ConvertAddrToString(inAddr, &temp);
