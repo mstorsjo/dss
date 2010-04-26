@@ -161,3 +161,5 @@ clean:
 .c.o:
 	$(CC) -c -o $*.o $(DEFINES) $(CCFLAGS) $*.c
 
+.PHONY: clean
+
