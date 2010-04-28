@@ -20,7 +20,7 @@ set -e
 
 case "$1" in
     configure)
-        adduser --system qtss
+        adduser --system --group --no-create-home qtss
         if grep aGFja21l /etc/streaming/qtgroups > /dev/null; then
             printf "Enter admin user name: "
             read username
