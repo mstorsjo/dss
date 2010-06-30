@@ -107,6 +107,10 @@ void ReflectorStream::Initialize(QTSS_ModulePrefsObject inPrefs)
     ReflectorStream::sOverBufferInMsec = sOverBufferInSec * 1000;
     ReflectorStream::sMaxFuturePacketMSec = sMaxFuturePacketSec * 1000;
     ReflectorStream::sMaxPacketAgeMSec = (UInt32) (sOverBufferInMsec * 1.5); //allow a little time before deleting.
+    if (ReflectorStream::sMaxPacketAgeMSec == 0)
+        ReflectorStream::sMaxPacketAgeMSec = 2000;
+    if (ReflectorStream::sFirstPacketOffsetMsec >= ReflectorStream::sOverBufferInMsec)
+        ReflectorStream::sFirstPacketOffsetMsec = ReflectorStream::sOverBufferInMsec - 150;
 
 }
 
