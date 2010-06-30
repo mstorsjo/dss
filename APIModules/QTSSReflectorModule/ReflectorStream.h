@@ -486,7 +486,7 @@ inline  void                    UpdateBitRate(SInt64 currentTime);
         static UInt32       sOverBufferInSec;
         static UInt32       sBucketDelayInMsec;
         static Bool16       sUsePacketReceiveTime;
-        static UInt32       sFirstPacketOffsetMsec;
+        static SInt32       sFirstPacketOffsetMsec;
         
         friend class ReflectorSocket;
         friend class ReflectorSender;

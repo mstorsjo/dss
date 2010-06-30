@@ -71,7 +71,7 @@ UInt32                          ReflectorStream::sMaxFuturePacketSec = 60; // ma
 UInt32                          ReflectorStream::sOverBufferInSec = 10;
 UInt32                          ReflectorStream::sBucketDelayInMsec = 73;
 Bool16                          ReflectorStream::sUsePacketReceiveTime = false;
-UInt32                          ReflectorStream::sFirstPacketOffsetMsec = 500;
+SInt32                          ReflectorStream::sFirstPacketOffsetMsec = 500;
 
 void ReflectorStream::Register()
 {
@@ -101,7 +101,7 @@ void ReflectorStream::Initialize(QTSS_ModulePrefsObject inPrefs)
     QTSSModuleUtils::GetAttribute(inPrefs, "reflector_in_packet_max_receive_sec", qtssAttrDataTypeUInt32,
                               &ReflectorStream::sMaxFuturePacketSec, &sDefaultMaxFuturePacketTimeSec, sizeof(sDefaultMaxFuturePacketTimeSec));
 
-    QTSSModuleUtils::GetAttribute(inPrefs, "reflector_rtp_info_offset_msec", qtssAttrDataTypeUInt32,
+    QTSSModuleUtils::GetAttribute(inPrefs, "reflector_rtp_info_offset_msec", qtssAttrDataTypeSInt32,
                               &ReflectorStream::sFirstPacketOffsetMsec, &sDefaultFirstPacketOffsetMsec, sizeof(sDefaultFirstPacketOffsetMsec));
 
     ReflectorStream::sOverBufferInMsec = sOverBufferInSec * 1000;
