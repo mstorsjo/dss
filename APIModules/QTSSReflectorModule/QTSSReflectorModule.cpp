@@ -141,7 +141,7 @@ static Bool16   sEnforceStaticSDPPortRange = false;
 static Bool16   sDefaultEnforceStaticSDPPortRange = false;
 
 static UInt32   sMaxAnnouncedSDPLengthInKbytes = 4;
-//static UInt32   sDefaultMaxAnnouncedSDPLengthInKbytes = 4;
+static UInt32   sDefaultMaxAnnouncedSDPLengthInKbytes = 4;
 
 static QTSS_AttributeID sIPAllowListID = qtssIllegalAttrID;
 static char*            sIPAllowList = NULL;
@@ -483,6 +483,9 @@ QTSS_Error RereadPrefs()
                                 &sMinimumStaticSDPPort, &sDefaultMinimumStaticSDPPort, sizeof(sDefaultMinimumStaticSDPPort));
     QTSSModuleUtils::GetAttribute(sPrefs, "maximum_static_sdp_port",    qtssAttrDataTypeUInt16,
                                 &sMaximumStaticSDPPort, &sDefaultMaximumStaticSDPPort, sizeof(sDefaultMaximumStaticSDPPort));
+
+    QTSSModuleUtils::GetAttribute(sPrefs, "max_announced_sdp_length_in_kbytes",  qtssAttrDataTypeUInt32,
+                                &sMaxAnnouncedSDPLengthInKbytes, &sDefaultMaxAnnouncedSDPLengthInKbytes, sizeof(sDefaultMaxAnnouncedSDPLengthInKbytes));
     
     QTSSModuleUtils::GetAttribute(sPrefs, "kill_clients_when_broadcast_stops",  qtssAttrDataTypeBool16,
                                 &sTearDownClientsOnDisconnect, &sDefaultTearDownClientsOnDisconnect, sizeof(sDefaultTearDownClientsOnDisconnect));
