@@ -1253,12 +1253,6 @@ void SetPrivileges(char *filePath)
         
     result = ::chown(filePath,owner,80);//default is owner qtss, group admin
     //printf("chown %s result =%d errno=%d\n",filePath, result, errno);
-      
-   if (result != 0)
-   {  
-        qtss_fprintf(stderr, "permission failure accessing file %s\n", filePath);
-        CleanupAndExit();
-   }
 #endif
 
     result = ::chown(filePath, (uid_t) owner, (gid_t) -1);//default is owner qtss, group root
