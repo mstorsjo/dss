@@ -29,6 +29,8 @@ CCFLAGS += -IAPIModules/QTSSSvrControlModule
 CCFLAGS += -IAPIModules/QTSSWebDebugModule
 CCFLAGS += -IAPIModules/QTSSWebStatsModule
 CCFLAGS += -IAPIModules/QTSSAuthorizeModule
+CCFLAGS += -IAPIModules/QTSSDSAuthModule
+CCFLAGS += -IAPIModules/QTSSDSAuthModule/DSWrappers
 CCFLAGS += -IAPIModules/QTSSPOSIXFileSysModule
 CCFLAGS += -IAPIModules/QTSSAdminModule
 CCFLAGS += -IAPIModules/QTSSMP3StreamingModule
@@ -138,6 +140,14 @@ CPPFILES = 	Server.tproj/QTSSExpirationDate.cpp\
 			APIModules/QTSSHttpFileModule/QTSSHttpFileModule.cpp \
 			APIModules/QTSSAccessModule/AccessChecker.cpp
 			
+ifeq ($(shell uname), Darwin)
+	CPPFILES += \
+			APIModules/QTSSDSAuthModule/QTSSDSAuthModule.cpp \
+			APIModules/QTSSDSAuthModule/DSAccessChecker.cpp \
+			APIModules/QTSSDSAuthModule/DSWrappers/CDirService.cpp \
+			APIModules/QTSSDSAuthModule/DSWrappers/DSBuffer.cpp
+endif
+
 # CCFLAGS += $(foreach dir,$(HDRS),-I$(dir))
 
 LIBFILES = 	QTFileLib/libQTFileLib.a \
