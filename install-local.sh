@@ -54,9 +54,14 @@ qtssMP3Broadcaster = $DEST/bin/MP3Broadcaster
 pidfile = $DEST/var/run/streamingadminserver.pid
 runUser = $username
 runGroup = $group
+qtssAutoStart = 1
 EOF
 
-cat $DEST/etc/streaming/streamingserver.xml | sed s,/usr/local,$DEST, | sed 's,/etc/streaming,'$DEST'&,' | sed 's,/var,'$DEST'&,' | sed 's,\(run_user_name" >\)\(qtss\),\1'$username, | sed 's,\(run_group_name" >\)\(qtss\),\1'$group, > $DEST/etc/streaming/tmp
+if [ "`uname`" = "Darwin" ]; then
+	cat $DEST/etc/streaming/streamingserver.xml | sed s,/Library/QuickTimeStreaming/Movies,$DEST/movies, | sed s,/Library/QuickTimeStreaming/Modules,$dest/sbin/StreamingServerModules, | sed s,/Library/QuickTimeStreaming/Config,$DEST/etc/streaming, | sed 's,/var,'$DEST'&,' | sed s,/Library/QuickTimeStreaming/Logs,$DEST/var/streaming/logs, | sed 's,\(run_user_name" >\)\(qtss\),\1'$username, | sed 's,\(run_group_name" >\)\(qtss\),\1'$group, > $DEST/etc/streaming/tmp
+else
+	cat $DEST/etc/streaming/streamingserver.xml | sed s,/usr/local,$DEST, | sed 's,/etc/streaming,'$DEST'&,' | sed 's,/var,'$DEST'&,' | sed 's,\(run_user_name" >\)\(qtss\),\1'$username, | sed 's,\(run_group_name" >\)\(qtss\),\1'$group, > $DEST/etc/streaming/tmp
+fi
 mv $DEST/etc/streaming/tmp $DEST/etc/streaming/streamingserver.xml
 
 printf "Enter admin user name: "
