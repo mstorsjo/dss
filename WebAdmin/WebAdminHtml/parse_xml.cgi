@@ -252,7 +252,7 @@ sub foundTag {
 			}
 			
 			# only try default authentication if setup assistant on mac os x
-			if (($^O eq "darwin") and (-e "index.html") and ($ENV{"REMOTE_HOST"} eq '127.0.0.1') and (MacQTGroupsContainsAdminGroup() == 0)) {
+			if (($^O eq "darwin") and (-e "index.html") and ($ENV{"REMOTE_HOST"} eq '127.0.0.1') and (MacQTGroupsContainsAdminGroup() == 0) and 0) {
 				if (wasAuth >= 0) { # first pass
 					open(LOGINFILE, "setup_assistant.html");
 					my $loginText = '';
@@ -897,7 +897,7 @@ sub AssistSetPassword {
 	
 	my $status = 200;
 	
-	if (($^O eq "darwin") and (-e "index.html") and (MacQTGroupsContainsAdminGroup() == 0)) {
+	if (($^O eq "darwin") and (-e "index.html") and (MacQTGroupsContainsAdminGroup() == 0) and 0) {
 		my $line = '';
 		$groupsFileText = '';
 		if (-e '/Library/QuickTimeStreaming/Config/qtgroups') {
