@@ -24,6 +24,7 @@ C++FLAGS = $(CCFLAGS)
 CFILES = base64.c	GetWord.c	Trim.c      md5.c
 
 CPPFILES =	atomic.cpp\
+			Address.cpp\
 			ConfParser.cpp\
 			DateTranslator.cpp\
 			EventContext.cpp\
