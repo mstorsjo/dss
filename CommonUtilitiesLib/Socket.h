@@ -42,6 +42,7 @@
 
 #include "EventContext.h"
 #include "ev.h"
+#include "Address.h"
 
 #define SOCKET_DEBUG 0
 
@@ -63,7 +64,7 @@ class Socket : public EventContext
         
         //Binds the socket to the following address.
         //Returns: QTSS_FileNotOpen, QTSS_NoErr, or POSIX errorcode.
-        OS_Error    Bind(UInt32 addr, UInt16 port,Bool16 test = false);
+        OS_Error    Bind(Address addr, UInt16 port,Bool16 test = false);
         //The same. but in reverse
         void            Unbind();   
         
@@ -94,8 +95,8 @@ class Socket : public EventContext
         Bool16  IsBound()       { return (Bool16) (fState & kBound); }
         
         //If the socket is bound, you may find out to which addr it is bound
-        UInt32  GetLocalAddr()  { return ntohl(fLocalAddr.sin_addr.s_addr); }
-        UInt16  GetLocalPort()  { return ntohs(fLocalAddr.sin_port); }
+        Address GetLocalAddr()  { return fLocalAddr; }
+        UInt16  GetLocalPort()  { return fLocalAddr.GetPort(); }
         
         StrPtrLen*  GetLocalAddrStr();
         StrPtrLen*  GetLocalPortStr();
@@ -119,25 +120,23 @@ class Socket : public EventContext
         virtual ~Socket() {}
 
         //returns QTSS_NoErr, or appropriate posix error
-        OS_Error    Open(int theType);
+        OS_Error    Open(int family, int theType);
         
         UInt32          fState;
         
         enum
         {
             kPortBufSizeInBytes = 8,    //UInt32
-            kMaxIPAddrSizeInBytes = 20  //UInt32
+            kMaxIPAddrSizeInBytes = 50  //UInt32
         };
         
-#if SOCKET_DEBUG
         StrPtrLen       fLocalAddrStr;
         char            fLocalAddrBuffer[kMaxIPAddrSizeInBytes]; 
-#endif
         
         //address information (available if bound)
         //these are always stored in network order. Conver
-        struct sockaddr_in  fLocalAddr;
-        struct sockaddr_in  fDestAddr;
+        Address  fLocalAddr;
+        Address  fDestAddr;
         
         StrPtrLen* fLocalAddrStrPtr;
         StrPtrLen* fLocalDNSStrPtr;

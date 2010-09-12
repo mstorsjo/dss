@@ -67,11 +67,6 @@ Socket::Socket(Task *notifytask, UInt32 inSocketType)
     fLocalDNSStrPtr(NULL),
     fPortStr(fPortBuffer, kPortBufSizeInBytes)
 {
-    fLocalAddr.sin_addr.s_addr = 0;
-    fLocalAddr.sin_port = 0;
-    
-    fDestAddr.sin_addr.s_addr = 0;
-    fDestAddr.sin_port = 0;
     
     this->SetTask(notifytask);
 
@@ -81,10 +76,10 @@ Socket::Socket(Task *notifytask, UInt32 inSocketType)
 
 }
 
-OS_Error Socket::Open(int theType)
+OS_Error Socket::Open(int family, int theType)
 {
     Assert(fFileDesc == EventContext::kInvalidFileDesc);
-    fFileDesc = ::socket(PF_INET, theType, 0);
+    fFileDesc = ::socket(family, theType, 0);
     if (fFileDesc == EventContext::kInvalidFileDesc)
         return (OS_Error)OSThread::GetErrno();
             
@@ -181,15 +176,21 @@ OS_Error    Socket::SetSocketRcvBufSize(UInt32 inNewSize)
 }
 
 
-OS_Error Socket::Bind(UInt32 addr, UInt16 port, UInt16 test)
+OS_Error Socket::Bind(Address addr, UInt16 port, UInt16 test)
 {
-    socklen_t len = sizeof(fLocalAddr);
-    ::memset(&fLocalAddr, 0, sizeof(fLocalAddr));
-    fLocalAddr.sin_family = AF_INET;
-    fLocalAddr.sin_port = htons(port);
-    fLocalAddr.sin_addr.s_addr = htonl(addr);
+    fLocalAddr = addr;
+    fLocalAddr.SetPort(port);
     
     int err;
+
+#if defined(IPV6_V6ONLY) && defined(IPPROTO_IPV6)
+    if (addr.GetFamily() == AF_INET6) {
+        /* Listen on the pure v6 address only */
+        int v6only = 1;
+        setsockopt(fFileDesc, IPPROTO_IPV6, IPV6_V6ONLY, (char*) &v6only, sizeof(v6only));
+    }
+#endif
+
     
 #if 0
     if (test) // pick some ports or conditions to return an error on.
@@ -207,34 +208,32 @@ OS_Error Socket::Bind(UInt32 addr, UInt16 port, UInt16 test)
     }
     else
 #endif
-        err = ::bind(fFileDesc, (sockaddr *)&fLocalAddr, sizeof(fLocalAddr));
+        err = ::bind(fFileDesc, fLocalAddr.GetSockAddr(), fLocalAddr.GetSockLen());
 
     
     if (err == -1)
     {
-        fLocalAddr.sin_port = 0;
-        fLocalAddr.sin_addr.s_addr = 0;
+        fLocalAddr = Address();
         return (OS_Error)OSThread::GetErrno();
     }
-    else ::getsockname(fFileDesc, (sockaddr *)&fLocalAddr, &len); // get the kernel to fill in unspecified values
+    else
+    {
+        struct sockaddr_storage ss;
+        socklen_t len = sizeof(ss);
+        ::getsockname(fFileDesc, (sockaddr *)&ss, &len); // get the kernel to fill in unspecified values
+        fLocalAddr = Address((sockaddr*)&ss);
+    }
     fState |= kBound;
     return OS_NoErr;
 }
 
 StrPtrLen*  Socket::GetLocalAddrStr()
 {
-    //Use the array of IP addr strings to locate the string formatted version
-    //of this IP address.
     if (fLocalAddrStrPtr == NULL)
     {
-        for (UInt32 x = 0; x < SocketUtils::GetNumIPAddrs(); x++)
-        {
-            if (SocketUtils::GetIPAddr(x) == ntohl(fLocalAddr.sin_addr.s_addr))
-            {
-                fLocalAddrStrPtr = SocketUtils::GetIPAddrStr(x);
-                break;
-            }
-        }
+        fLocalAddr.ToNumericString(fLocalAddrBuffer, sizeof(fLocalAddrBuffer));
+        fLocalAddrStr.Set(fLocalAddrBuffer);
+        fLocalAddrStrPtr = &fLocalAddrStr;
     }
 
 #if SOCKET_DEBUG    
@@ -265,12 +264,12 @@ StrPtrLen*  Socket::GetLocalAddrStr()
 StrPtrLen*  Socket::GetLocalDNSStr()
 {
     //Do the same thing as the above function, but for DNS names
-    Assert(fLocalAddr.sin_addr.s_addr != INADDR_ANY);
+    Assert(!fLocalAddr.IsAddrAny());
     if (fLocalDNSStrPtr == NULL)
     {
         for (UInt32 x = 0; x < SocketUtils::GetNumIPAddrs(); x++)
         {
-            if (SocketUtils::GetIPAddr(x) == ntohl(fLocalAddr.sin_addr.s_addr))
+            if (SocketUtils::GetIPAddr(x) == fLocalAddr)
             {
                 fLocalDNSStrPtr = SocketUtils::GetDNSNameStr(x);
                 break;
@@ -290,7 +289,7 @@ StrPtrLen*  Socket::GetLocalPortStr()
 {
     if (fPortStr.Len == kPortBufSizeInBytes)
     {
-        int temp = ntohs(fLocalAddr.sin_port);
+        int temp = fLocalAddr.GetPort();
         qtss_sprintf(fPortBuffer, "%d", temp);
         fPortStr.Len = ::strlen(fPortBuffer);
     }

@@ -58,7 +58,7 @@ SInt64 RTCPTask::Run()
                 for (OSQueueIter iter(theServer->GetSocketPool()->GetSocketQueue());
                                 !iter.IsDone(); iter.Next())
                 {
-                        UInt32 theRemoteAddr = 0;
+                        Address theRemoteAddr;
                         UInt16 theRemotePort = 0;
         
                         UDPSocketPair* thePair = (UDPSocketPair*)iter.GetCurrent()->GetEnclosingObject();

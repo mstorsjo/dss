@@ -58,7 +58,7 @@ class BroadcasterSession : public Task
         };
         typedef UInt32 BroadcasterType;
     
-        BroadcasterSession( UInt32 inAddr, UInt16 inPort, char* inURL,
+        BroadcasterSession( Address inAddr, UInt16 inPort, char* inURL,
                         BroadcasterType inBroadcasterType,
                         UInt32 inDurationInSec, UInt32 inStartPlayTimeInSec,
                         UInt32 inRTCPIntervalInSec, UInt32 inOptionsIntervalInSec,

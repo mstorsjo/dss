@@ -160,8 +160,8 @@ static void FindRelaySessions(OSQueue* inSessionQueue);
 
 static QTSS_Error SetupAnnouncedSessions(QTSS_StandardRTSP_Params* inParams);
 static RTSPSessionIDQueueElem* FindRTSPSessionIDQueueElem(UInt32 inSessionID);
-static RTSPSourceInfo* FindAnnouncedSourceInfo(UInt32 inIP, StrPtrLen& inURL);
-static RTSPSourceInfo* FindExistingRelayInfo(UInt32 inIP, StrPtrLen& inURL);
+static RTSPSourceInfo* FindAnnouncedSourceInfo(Address inIP, StrPtrLen& inURL);
+static RTSPSourceInfo* FindExistingRelayInfo(Address inIP, StrPtrLen& inURL);
 
 static void RereadRelayPrefs(XMLParser* prefsParser);
 static void FindSourceInfos(OSQueue* inSessionQueue, OSQueue* inAnnouncedQueue, XMLParser* prefsParser);
@@ -636,10 +636,10 @@ QTSS_Error SetupAnnouncedSessions(QTSS_StandardRTSP_Params* inParams)
     theElem = 0;
     
     // Get the Remote IP address
-    UInt32* theIP = 0;
+    Address* theIP = NULL;
     theLen = 0;
     theErr = QTSS_GetValuePtr(inParams->inRTSPSession, qtssRTSPSesRemoteAddr, 0, (void**)&theIP, &theLen);
-    if ((theErr != QTSS_NoErr) || (theLen != sizeof(UInt32)))
+    if ((theErr != QTSS_NoErr) || (theLen != sizeof(Address)))
     {
         Assert(0);
         return QTSS_NoErr;
@@ -688,7 +688,9 @@ QTSS_Error SetupAnnouncedSessions(QTSS_StandardRTSP_Params* inParams)
         return QTSS_NoErr;
     }
         
-    newInfo->SetSourceParameters(INADDR_LOOPBACK, thePort, theURL);
+    Address loopback;
+    loopback.SetLoopback(theIP->GetFamily());
+    newInfo->SetSourceParameters(loopback, thePort, theURL);
     newInfo->StartSessionCreatorTask(sSessionQueue, sRTSPSourceInfoQueue);
     
     return QTSS_NoErr;
@@ -707,7 +709,7 @@ RTSPSessionIDQueueElem* FindRTSPSessionIDQueueElem(UInt32 inSessionID)
     return NULL;
 }
 
-RTSPSourceInfo* FindAnnouncedSourceInfo(UInt32 inIP, StrPtrLen& inURL)
+RTSPSourceInfo* FindAnnouncedSourceInfo(Address inIP, StrPtrLen& inURL)
 {
     RTSPSourceInfo* info = NULL;
     Bool16 ipMatchfound = false;
@@ -727,11 +729,11 @@ RTSPSourceInfo* FindAnnouncedSourceInfo(UInt32 inIP, StrPtrLen& inURL)
 //      if ((announceInfo == NULL) || (!announceInfo->IsAnnounce()))
 //          continue;
     
-        UInt32 infoIP = announceInfo->GetAnnounceIP();
+        Address infoIP = announceInfo->GetAnnounceIP();
         StrPtrLen infoURL(announceInfo->GetAnnounceURL());  
         
         // if there is a source info for ANNOUNCE ALL, keep this info until a better one is found
-        if (!ipMatchfound && (infoIP == 0) && ((infoURL.Ptr == NULL) || (infoURL.Len == 0)))
+        if (!ipMatchfound && (infoIP.IsAddrEmpty()) && ((infoURL.Ptr == NULL) || (infoURL.Len == 0)))
         {
             info = announceInfo;
             continue;
@@ -773,7 +775,7 @@ RTSPSourceInfo* FindAnnouncedSourceInfo(UInt32 inIP, StrPtrLen& inURL)
     return info;
 }
 
-RTSPSourceInfo* FindExistingRelayInfo(UInt32 inIP, StrPtrLen& inURL)
+RTSPSourceInfo* FindExistingRelayInfo(Address inIP, StrPtrLen& inURL)
 {   
     if (inURL.Ptr == NULL)
         return NULL;
@@ -1083,15 +1085,15 @@ QTSS_Error RouteAuthorization(QTSS_StandardRTSP_Params* inParams)
     UInt32 theLen = 0;
     
     // Get the Remote IP address
-    UInt32* theIP = 0;
+    Address* theIP = 0;
     theErr = QTSS_GetValuePtr(inParams->inRTSPSession, qtssRTSPSesRemoteAddr, 0, (void**)&theIP, &theLen);
-    if ((theErr != QTSS_NoErr) || (theLen != sizeof(UInt32)))
+    if ((theErr != QTSS_NoErr) || (theLen != sizeof(Address)))
     {
         Assert(0);
         return QTSS_NoErr;
     }
     
-    if (*theIP != INADDR_LOOPBACK)
+    if (!theIP->IsAddrLoopback())
         return QTSS_NoErr;
         
     // Get the Remote Port
@@ -1197,7 +1199,7 @@ Bool16 CheckDNSNames(XMLParser* prefsFile, Bool16 doResolution)
         {
             char* destAddrStr = prefTag->GetValue();
             if (destAddrStr  != NULL)
-                if (SocketUtils::ConvertStringToAddr(destAddrStr) == INADDR_NONE)
+                if (SocketUtils::ConvertStringToAddr(destAddrStr).IsAddrEmpty())
                 {
                     if (doResolution)
                         ResolveDNSAddr(prefTag);
@@ -1210,7 +1212,7 @@ Bool16 CheckDNSNames(XMLParser* prefsFile, Bool16 doResolution)
         {
             char* srcAddrStr = prefTag->GetValue();
             if (srcAddrStr != NULL)
-                if (SocketUtils::ConvertStringToAddr(srcAddrStr) == INADDR_NONE)
+                if (SocketUtils::ConvertStringToAddr(srcAddrStr).IsAddrEmpty())
                 {
                     if (doResolution)
                         ResolveDNSAddr(prefTag);
@@ -1231,7 +1233,7 @@ Bool16 CheckDNSNames(XMLParser* prefsFile, Bool16 doResolution)
             {
                 char* outAddrStr = prefTag->GetValue();
                 if (outAddrStr  != NULL)
-                    if (SocketUtils::ConvertStringToAddr(outAddrStr) == INADDR_NONE)
+                    if (SocketUtils::ConvertStringToAddr(outAddrStr).IsAddrEmpty())
                     {
                         if (doResolution)
                             ResolveDNSAddr(prefTag);
@@ -1244,7 +1246,7 @@ Bool16 CheckDNSNames(XMLParser* prefsFile, Bool16 doResolution)
             {
                 char* destAddrStr = prefTag->GetValue();
                 if (destAddrStr  != NULL)
-                    if (SocketUtils::ConvertStringToAddr(destAddrStr) == INADDR_NONE)
+                    if (SocketUtils::ConvertStringToAddr(destAddrStr).IsAddrEmpty())
                     {
                         if (doResolution)
                             ResolveDNSAddr(prefTag);
@@ -1260,14 +1262,11 @@ Bool16 CheckDNSNames(XMLParser* prefsFile, Bool16 doResolution)
 
 void ResolveDNSAddr(XMLTag* tag)
 {
-    struct in_addr inAddr;
-    struct hostent* theHostent = ::gethostbyname(tag->GetValue());      
-    if (theHostent != NULL)
+    Address inAddr = Address::ConvertStringToAddress(tag->GetValue());
+    if (!inAddr.IsAddrEmpty())
     {
         char buffer[50] = "";
-        StrPtrLen temp(buffer);
-        inAddr.s_addr = *(UInt32*)(theHostent->h_addr_list[0]);
-        SocketUtils::ConvertAddrToString(inAddr, &temp);
+        inAddr.ToNumericString(buffer, sizeof(buffer));
         tag->SetValue(buffer);
     }
 }

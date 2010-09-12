@@ -280,11 +280,9 @@ void    ReflectorSession::FormatHTML(StrPtrLen* inURL)
     if (inURL == NULL)
     {   
         // If no URL is provided, format the source IP addr as a string.
-        char theIPAddrBuf[20];
-        StrPtrLen theIPAddr(theIPAddrBuf, 20);
-        struct in_addr theAddr;
-        theAddr.s_addr = htonl(fSourceInfo->GetStreamInfo(0)->fSrcIPAddr);
-        SocketUtils::ConvertAddrToString(theAddr, &theIPAddr);
+        char theIPAddrBuf[ADDRSTRLEN];
+        StrPtrLen theIPAddr(theIPAddrBuf, ADDRSTRLEN);
+        fSourceInfo->GetStreamInfo(0)->fSrcIPAddr.GetNumericString(&theIPAddr);
         fFormatter.Put(theIPAddr);
     }
     else

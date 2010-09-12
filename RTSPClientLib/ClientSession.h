@@ -56,7 +56,7 @@ class ClientSession : public Task
         typedef UInt32 ClientType;
     
         //The constructor will signal itself with Task::kStartEvent
-        ClientSession(  UInt32 inAddr, UInt16 inPort, char* inURL,
+        ClientSession(  Address inAddr, UInt16 inPort, char* inURL,
                         ClientType inClientType,
                         UInt32 inDurationInSec, UInt32 inStartPlayTimeInSec,
                         UInt32 inRTCPIntervalInMS, UInt32 inOptionsIntervalInSec,

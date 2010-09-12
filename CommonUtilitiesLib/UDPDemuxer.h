@@ -38,6 +38,7 @@
 #include "OSHashTable.h"
 #include "OSMutex.h"
 #include "StrPtrLen.h"
+#include "Address.h"
 
 class Task;
 class UDPDemuxerKey;
@@ -50,8 +51,8 @@ class UDPDemuxerUtils
 {
     private:
     
-        static UInt32 ComputeHashValue(UInt32 inRemoteAddr, UInt16 inRemotePort)
-            { return ((inRemoteAddr << 16) + inRemotePort); }
+        static UInt32 ComputeHashValue(Address inRemoteAddr, UInt16 inRemotePort)
+            { return (inRemoteAddr.GetHashValue() + inRemotePort); }
             
     friend class UDPDemuxerTask;
     friend class UDPDemuxerKey;
@@ -62,21 +63,21 @@ class UDPDemuxerTask
     public:
     
         UDPDemuxerTask()
-            :   fRemoteAddr(0), fRemotePort(0),
+            :   fRemotePort(0),
                 fHashValue(0), fNextHashEntry(NULL) {}
         virtual ~UDPDemuxerTask() {}
         
-        UInt32  GetRemoteAddr() { return fRemoteAddr; }
+        Address GetRemoteAddr() { return fRemoteAddr; }
         
     private:
 
-        void Set(UInt32 inRemoteAddr, UInt16 inRemotePort)
+        void Set(Address inRemoteAddr, UInt16 inRemotePort)
             {   fRemoteAddr = inRemoteAddr; fRemotePort = inRemotePort;
                 fHashValue = UDPDemuxerUtils::ComputeHashValue(fRemoteAddr, fRemotePort);
             }
         
         //key values
-        UInt32 fRemoteAddr;
+        Address fRemoteAddr;
         UInt16 fRemotePort;
         
         //precomputed for performance
@@ -96,7 +97,7 @@ class UDPDemuxerKey
     private:
 
         //CONSTRUCTOR / DESTRUCTOR:
-        UDPDemuxerKey(UInt32 inRemoteAddr, UInt16 inRemotePort)
+        UDPDemuxerKey(Address inRemoteAddr, UInt16 inRemotePort)
             :   fRemoteAddr(inRemoteAddr), fRemotePort(inRemotePort)
                 { fHashValue = UDPDemuxerUtils::ComputeHashValue(inRemoteAddr, inRemotePort); }
                 
@@ -122,7 +123,7 @@ class UDPDemuxerKey
         }
         
         //data:
-        UInt32 fRemoteAddr;
+        Address fRemoteAddr;
         UInt16 fRemotePort;
         UInt32  fHashValue;
 
@@ -144,18 +145,18 @@ class UDPDemuxer
         
         // Return values: OS_NoErr, or EPERM if there is already a task registered
         // with this address combination
-        OS_Error RegisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
+        OS_Error RegisterTask(Address inRemoteAddr, UInt16 inRemotePort,
                                         UDPDemuxerTask *inTaskP);
 
         // Return values: OS_NoErr, or EPERM if this task / address combination
         // is not registered
-        OS_Error UnregisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
+        OS_Error UnregisterTask(Address inRemoteAddr, UInt16 inRemotePort,
                                         UDPDemuxerTask *inTaskP);
         
         //Assumes that parent has grabbed the mutex!
-        UDPDemuxerTask* GetTask(UInt32 inRemoteAddr, UInt16 inRemotePort);
+        UDPDemuxerTask* GetTask(Address inRemoteAddr, UInt16 inRemotePort);
 
-        Bool16  AddrInMap(UInt32 inRemoteAddr, UInt16 inRemotePort)
+        Bool16  AddrInMap(Address inRemoteAddr, UInt16 inRemotePort)
                     { return (this->GetTask(inRemoteAddr, inRemotePort) != NULL); }
                     
         OSMutex*                GetMutex()      { return &fMutex; }

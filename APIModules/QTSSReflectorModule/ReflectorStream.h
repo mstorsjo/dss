@@ -190,7 +190,7 @@ class ReflectorSocket : public IdleTask, public UDPSocket
         void    AddSender(ReflectorSender* inSender);
         void    RemoveSender(ReflectorSender* inStreamElem);
         Bool16  HasSender() { return (this->GetDemuxer()->GetHashTable()->GetNumEntries() > 0); }
-        Bool16  ProcessPacket(const SInt64& inMilliseconds,ReflectorPacket* thePacket,UInt32 theRemoteAddr,UInt16 theRemotePort);
+        Bool16  ProcessPacket(const SInt64& inMilliseconds,ReflectorPacket* thePacket,Address theRemoteAddr,UInt16 theRemotePort);
         ReflectorPacket*    GetPacket();
         virtual SInt64      Run();
         void    SetSSRCFilter(Bool16 state, UInt32 timeoutSecs) { fFilterSSRCs = state; fTimeoutSecs = timeoutSecs;}
@@ -324,7 +324,7 @@ class ReflectorStream
             // A unicast broadcast can also be identified by source IP address. If
             // you are attempting to demux by source IP, this ID will not guarentee
             // uniqueness and special care should be used.
-            kStreamIDSize = sizeof(UInt32) + sizeof(UInt16)
+            kStreamIDSize = sizeof(Address) + sizeof(UInt16)
         };
         
         // Uses a StreamInfo to generate a unique ID
@@ -457,7 +457,7 @@ inline  void                    UpdateBitRate(SInt64 currentTime);
         
         // This is the destination address & port for RTCP
         // receiver reports.
-        UInt32      fDestRTCPAddr;
+        Address     fDestRTCPAddr;
         UInt16      fDestRTCPPort;
     
         // Used for calculating average bit rate

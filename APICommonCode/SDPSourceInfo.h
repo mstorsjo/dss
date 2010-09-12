@@ -62,8 +62,8 @@ class SDPSourceInfo : public SourceInfo
         
         // Assuming the parser is currently pointing at the beginning of an dotted-
         // decimal IP address, this consumes it (stopping at inStopChar), and returns
-        // the IP address (host ordered) as a UInt32
-        static UInt32 GetIPAddr(StringParser* inParser, char inStopChar);
+        // the IP address (host ordered) as an Address
+        static Address GetIPAddr(StringParser* inParser, char inStopChar);
       
     private:
 

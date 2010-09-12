@@ -190,8 +190,8 @@ protected:
     QTSS_StreamRef      fStreamRef;
 
     UInt32              fSessionID;
-    UInt32              fLocalAddr;
-    UInt32              fRemoteAddr;
+    Address             fLocalAddr;
+    Address             fRemoteAddr;
     SInt32              fRequestBodyLen;
     
     UInt16              fLocalPort;

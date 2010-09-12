@@ -251,11 +251,13 @@ class QTSSModuleUtils
 class IPComponentStr
 {
     public:
-    enum { kNumComponents = 4 };
+    enum { kNumComponentsV4 = 4, kNumComponentsV6 = 8 };
     
-    StrPtrLen   fAddressComponent[kNumComponents];
+    StrPtrLen   fAddressComponent[kNumComponentsV6];
     Bool16      fIsValid;
+    int         fFamily;
     static IPComponentStr sLocalIPCompStr;
+    static IPComponentStr sLocalIPCompStrV6;
 
     IPComponentStr() : fIsValid(false) {}
     IPComponentStr(char *theAddress);
@@ -272,7 +274,7 @@ inline  Bool16      IsLocal();
 
 Bool16  IPComponentStr::IsLocal()
 {
-    if (this->Equal(&sLocalIPCompStr))
+    if (this->Equal(&sLocalIPCompStr) || this->Equal(&sLocalIPCompStrV6))
         return true;
     
     return false;
@@ -280,7 +282,7 @@ Bool16  IPComponentStr::IsLocal()
 
 StrPtrLen* IPComponentStr::GetComponent(UInt16 which) 
 {
-   if (which < IPComponentStr::kNumComponents) 
+   if (which < IPComponentStr::kNumComponentsV6)
         return &fAddressComponent[which]; 
    
    Assert(0);

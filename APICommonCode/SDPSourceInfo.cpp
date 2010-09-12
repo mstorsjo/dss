@@ -229,7 +229,7 @@ void SDPSourceInfo::Parse(char* sdpData, UInt32 sdpLen)
 	::memset(fStreamArray, 0, sizeof(StreamInfo) * fNumStreams);
 
     // set the default destination as our default IP address and set the default ttl
-    theGlobalStreamInfo.fDestIPAddr = INADDR_ANY;
+    theGlobalStreamInfo.fDestIPAddr = Address::CreateAnyAddress();
     theGlobalStreamInfo.fTimeToLive = kDefaultTTL;
         
     //Set bufferdelay to default of 3
@@ -372,7 +372,7 @@ void SDPSourceInfo::Parse(char* sdpData, UInt32 sdpLen)
                 //get the IP address off this header
                 StringParser cParser(&sdpLine);
                 cParser.ConsumeLength(NULL, 9);//strip off "c=in ip4 "
-                UInt32 tempIPAddr = SDPSourceInfo::GetIPAddr(&cParser, '/');
+                Address tempIPAddr = SDPSourceInfo::GetIPAddr(&cParser, '/');
                                 
                 //grab the ttl
                 SInt32 tempTtl = kDefaultTTL;
@@ -411,7 +411,7 @@ void SDPSourceInfo::Parse(char* sdpData, UInt32 sdpLen)
         
 }
 
-UInt32 SDPSourceInfo::GetIPAddr(StringParser* inParser, char inStopChar)
+Address SDPSourceInfo::GetIPAddr(StringParser* inParser, char inStopChar)
 {
     StrPtrLen ipAddrStr;
 
@@ -419,7 +419,7 @@ UInt32 SDPSourceInfo::GetIPAddr(StringParser* inParser, char inStopChar)
     inParser->ConsumeUntil(&ipAddrStr, inStopChar);
     
     if (ipAddrStr.Len == 0)
-        return 0;
+        return Address();
     
     // NULL terminate it
     char endChar = ipAddrStr.Ptr[ipAddrStr.Len];
@@ -427,7 +427,7 @@ UInt32 SDPSourceInfo::GetIPAddr(StringParser* inParser, char inStopChar)
     
     //inet_addr returns numeric IP addr in network byte order, make
     //sure to convert to host order.
-    UInt32 ipAddr = SocketUtils::ConvertStringToAddr(ipAddrStr.Ptr);
+    Address ipAddr = SocketUtils::ConvertStringToAddr(ipAddrStr.Ptr);
     
     // Make sure to put the old char back!
     ipAddrStr.Ptr[ipAddrStr.Len] = endChar;

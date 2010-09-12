@@ -81,7 +81,7 @@ void    RelaySDPSourceInfo::Parse(StrPtrLen* inSDPData)
     
     StringParser trackCounter(inSDPData);
 
-    UInt32 theDestIPAddr = 0;
+    Address theDestIPAddr;
     UInt16 theDestTtl = 0;
 
     //
@@ -152,14 +152,14 @@ void    RelaySDPSourceInfo::Parse(StrPtrLen* inSDPData)
     for (UInt32 x = 0; x < fNumOutputs; x++)
     {
         fOutputArray[x].fDestAddr = SDPSourceInfo::GetIPAddr(&theOutputAddrParser, ' ');
-        fOutputArray[x].fLocalAddr = INADDR_ANY;
+        fOutputArray[x].fLocalAddr = Address::CreateAnyAddressOfFamily(fOutputArray[x].fDestAddr.GetFamily());
         fOutputArray[x].fTimeToLive = theDestTtl;
         fOutputArray[x].fPortArray = NEW UInt16[fNumStreams];//Each output has one port per stream
         fOutputArray[x].fNumPorts = fNumStreams;
         ::memset(fOutputArray[x].fPortArray, 0, fNumStreams * sizeof(UInt16));
         fOutputArray[x].fAlreadySetup = false;
         theOutputAddrParser.ConsumeWhitespace();
-        Assert(fOutputArray[x].fDestAddr > 0);
+        Assert(!fOutputArray[x].fDestAddr.IsAddrEmpty());
     }
     
     StringParser sdpParser(inSDPData);

@@ -26,7 +26,7 @@
 #include "MP3MetaInfoUpdater.h"
 #include "StringTranslator.h"
 
-MP3MetaInfoUpdater::MP3MetaInfoUpdater(char* password, char* mountPoint, UInt32 addr, UInt16 port)
+MP3MetaInfoUpdater::MP3MetaInfoUpdater(char* password, char* mountPoint, Address addr, UInt16 port)
     : mPassword(NULL),
     mMountPoint(NULL),
     mSocket(NULL, 0),
@@ -77,7 +77,7 @@ void MP3MetaInfoUpdater::RequestMetaInfoUpdate(char* song)
 
 void MP3MetaInfoUpdater::DoUpdateMetaInfo()
 {
-    mSocket.Open();
+    mSocket.Open(mAddr.GetFamily());
     int err = mSocket.Connect(mAddr, mPort);
     
     if (!err)

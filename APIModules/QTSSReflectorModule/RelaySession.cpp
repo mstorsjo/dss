@@ -185,19 +185,16 @@ QTSS_Error RelaySession::SetupRelaySession(SourceInfo* inInfo)
     theErr = QTSS_SetValue (fRelaySessionObject, sSourceType, 0, (void*)sourceStr.Ptr, sourceStr.Len);
     Assert(theErr == QTSS_NoErr);
     
-    char theIPAddrBuf[20];          
-    StrPtrLen theIPAddr(theIPAddrBuf, 20);
+    char theIPAddrBuf[ADDRSTRLEN];
+    StrPtrLen theIPAddr(theIPAddrBuf, ADDRSTRLEN);
     
-    struct in_addr theSrcAddr;      // source ip address
-    theSrcAddr.s_addr = htonl(inInfo->GetStreamInfo(0)->fSrcIPAddr);
-    SocketUtils::ConvertAddrToString(theSrcAddr, &theIPAddr);   
+    inInfo->GetStreamInfo(0)->fSrcIPAddr.GetNumericString(&theIPAddr);
     
     theErr = QTSS_SetValue (fRelaySessionObject, sSourceIPAddr, 0, (void*)theIPAddr.Ptr, theIPAddr.Len);
     Assert(theErr == QTSS_NoErr);
     
-    struct in_addr theDestAddr;     // dest (of source) ip address
-    theDestAddr.s_addr = htonl(inInfo->GetStreamInfo(0)->fDestIPAddr);
-    SocketUtils::ConvertAddrToString(theDestAddr, &theIPAddr);
+    theIPAddr.Set(theIPAddrBuf, ADDRSTRLEN);
+    inInfo->GetStreamInfo(0)->fDestIPAddr.GetNumericString(&theIPAddr);
     
     theErr = QTSS_SetValue (fRelaySessionObject, sSourceInIPAddr, 0, (void*)theIPAddr.Ptr, theIPAddr.Len);
     Assert(theErr == QTSS_NoErr);

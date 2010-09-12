@@ -194,7 +194,7 @@ RelayOutput::RelayOutput(SourceInfo* inInfo, UInt32 inWhichOutput, RelaySession*
             
             fDoingAnnounce = true;
             // set up rtsp socket and client
-            fClientSocket = new TCPClientSocket(Socket::kNonBlockingSocketType);
+            fClientSocket = new TCPClientSocket(Socket::kNonBlockingSocketType, fOutputInfo.fDestAddr.GetFamily());
             fClient = new RTSPClient(fClientSocket, false, RelaySession::sRelayUserAgent);
             
             // set up the outgoing socket
@@ -233,11 +233,9 @@ RelayOutput::RelayOutput(SourceInfo* inInfo, UInt32 inWhichOutput, RelaySession*
     static StrPtrLen sHTMLEnd("<BR>");
         
     // First, format the destination addr as a dotted decimal string
-    char theIPAddrBuf[20];
-    StrPtrLen theIPAddr(theIPAddrBuf, 20);
-    struct in_addr theAddr;
-    theAddr.s_addr = htonl(fOutputInfo.fDestAddr);
-    SocketUtils::ConvertAddrToString(theAddr, &theIPAddr);
+    char theIPAddrBuf[ADDRSTRLEN];
+    StrPtrLen theIPAddr(theIPAddrBuf, ADDRSTRLEN);
+    fOutputInfo.fDestAddr.GetNumericString(&theIPAddr);
 
     // Begin writing the HTML
     fFormatter.Put(sHTMLStart);
@@ -309,7 +307,8 @@ RelayOutput::~RelayOutput()
 
 OS_Error RelayOutput::BindSocket()
 {
-    OS_Error theErr = fOutputSocket.Open();
+    fOutputInfo.fLocalAddr = Address::CreateAnyAddressOfFamily(fOutputInfo.fDestAddr.GetFamily());
+    OS_Error theErr = fOutputSocket.Open(fOutputInfo.fLocalAddr.GetFamily());
     if (theErr != OS_NoErr)
         return theErr;
     
@@ -536,19 +535,16 @@ void RelayOutput::SetupRelayOutputObject(RTSPOutputInfo* inRTSPInfo)
         Assert(theErr == QTSS_NoErr);
     }
     
-    char theIPAddrBuf[20];          
-    StrPtrLen theIPAddr(theIPAddrBuf, 20);
+    char theIPAddrBuf[ADDRSTRLEN];
+    StrPtrLen theIPAddr(theIPAddrBuf, ADDRSTRLEN);
     
-    struct in_addr theDestAddr;     // output destination address
-    theDestAddr.s_addr = htonl(fOutputInfo.fDestAddr);
-    SocketUtils::ConvertAddrToString(theDestAddr, &theIPAddr);  
+    fOutputInfo.fDestAddr.GetNumericString(&theIPAddr);
     
     theErr = QTSS_SetValue (fRelayOutputObject, sOutputDestAddr, 0, (void*)theIPAddr.Ptr, theIPAddr.Len);
     Assert(theErr == QTSS_NoErr);
     
-    struct in_addr theLocalAddr;        // output local address
-    theLocalAddr.s_addr = htonl(fOutputInfo.fLocalAddr);
-    SocketUtils::ConvertAddrToString(theLocalAddr, &theIPAddr); 
+    theIPAddr.Set(theIPAddrBuf, ADDRSTRLEN);
+    fOutputInfo.fLocalAddr.GetNumericString(&theIPAddr);
     
     theErr = QTSS_SetValue (fRelayOutputObject, sOutputLocalAddr, 0, (void*)theIPAddr.Ptr, theIPAddr.Len);
     Assert(theErr == QTSS_NoErr);

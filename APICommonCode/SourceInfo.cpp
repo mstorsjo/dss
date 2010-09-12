@@ -90,7 +90,7 @@ Bool16  SourceInfo::IsReflectable()
     return true;
 }
 
-Bool16  SourceInfo::IsReflectableIPAddr(UInt32 inIPAddr)
+Bool16  SourceInfo::IsReflectableIPAddr(Address inIPAddr)
 {
     if (SocketUtils::IsMulticastIPAddr(inIPAddr) || SocketUtils::IsLocalIPAddr(inIPAddr))
         return true;

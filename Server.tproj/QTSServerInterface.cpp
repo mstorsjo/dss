@@ -193,7 +193,6 @@ QTSServerInterface::QTSServerInterface()
     fSrvrPrefs(NULL),
     fSrvrMessages(NULL),
     fServerState(qtssStartingUpState),
-    fDefaultIPAddr(0),
     fListeners(NULL),
     fNumListeners(0),
     fStartupTime_UnixMilli(0),

@@ -71,7 +71,6 @@ static QTSS_ModulePrefsObject       sFileModulePrefs;
 static StrPtrLen sRTPSuffix(".rtp");
 static StrPtrLen sSDPHeader1("v=0\r\ns=");
 static StrPtrLen sSDPHeader2;
-static StrPtrLen sSDPHeader3("c=IN IP4 ");
 static StrPtrLen sSDPHeader4("\r\na=control:/\r\n");
 static const StrPtrLen              kCacheControlHeader("must-revalidate");
 
@@ -377,14 +376,15 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParamBlock)
     theSDPVec[3].iov_len = sSDPHeader2.Len;
     totalSDPLength += sSDPHeader2.Len;
 
-    //connection header
-    theSDPVec[4].iov_base = sSDPHeader3.Ptr;
-    theSDPVec[4].iov_len = sSDPHeader3.Len;
-    totalSDPLength += sSDPHeader3.Len;
-    
-    //append IP addr
-    (void)QTSS_GetValuePtr(inParamBlock->inRTSPSession, qtssRTSPSesLocalAddrStr, 0,
-                                                (void**)&theSDPVec[5].iov_base, (UInt32*)&theSDPVec[5].iov_len);
+    //append IP address c= line
+    Address addr;
+    UInt32 len = sizeof(addr);
+    (void)QTSS_GetValue(inParamBlock->inRTSPSession, qtssRTSPSesLocalAddr, 0, &addr, &len);
+    char buffer[SDPLINEBUFSIZE];
+    theSDPVec[4].iov_base = NULL;
+    theSDPVec[4].iov_len = 0;
+    theSDPVec[5].iov_base = addr.GetSDPCLine(buffer);
+    theSDPVec[5].iov_len = strlen((char*) theSDPVec[5].iov_base);
     totalSDPLength += theSDPVec[5].iov_len;
 
     //last static sdp line

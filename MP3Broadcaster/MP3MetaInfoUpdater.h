@@ -33,7 +33,7 @@
 class MP3MetaInfoUpdater : public OSThread
 {
 public:
-    MP3MetaInfoUpdater(char* password, char* mountPoint, UInt32 addr, UInt16 port);
+    MP3MetaInfoUpdater(char* password, char* mountPoint, Address addr, UInt16 port);
     ~MP3MetaInfoUpdater();
     
     void Entry();
@@ -49,7 +49,7 @@ private:
     char* mPassword;
     char* mMountPoint;
     TCPSocket mSocket;
-    UInt32 mAddr;
+    Address mAddr;
     UInt16 mPort;
     bool mFirstTime;
 };

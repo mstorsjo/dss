@@ -140,13 +140,13 @@ RTSPSourceInfo::~RTSPSourceInfo()
     if (fRTSPInfoArray != NULL) delete [] fRTSPInfoArray;
 }
 
-void RTSPSourceInfo::InitClient(UInt32 inSocketType)
+void RTSPSourceInfo::InitClient(UInt32 inSocketType, int family)
 {
-    fClientSocket = NEW TCPClientSocket(inSocketType);
+    fClientSocket = NEW TCPClientSocket(inSocketType, family);
     fClient = NEW RTSPClient(fClientSocket, false, RelaySession::sRelayUserAgent);
 }
 
-void RTSPSourceInfo::SetClientInfo(UInt32 inAddr, UInt16 inPort, char* inURL, UInt32 inLocalAddr)
+void RTSPSourceInfo::SetClientInfo(Address inAddr, UInt16 inPort, char* inURL, Address inLocalAddr)
 {
     if (fClientSocket != NULL)
         fClientSocket->Set(inAddr, inPort);
@@ -156,15 +156,15 @@ void RTSPSourceInfo::SetClientInfo(UInt32 inAddr, UInt16 inPort, char* inURL, UI
     if (fClient != NULL)
         fClient->Set(inURLPtrLen);
 
-    if (inLocalAddr != 0)
+    if (!inLocalAddr.IsAddrEmpty())
         fClientSocket->GetSocket()->Bind(inLocalAddr, 0);
 }
 
 QTSS_Error RTSPSourceInfo::ParsePrefs(XMLTag* relayTag, Bool16 inAnnounce)
 {
     XMLTag* prefTag;
-    UInt32 localAddr = 0;
-    UInt32 theHostAddr = 0;
+    Address localAddr;
+    Address theHostAddr;
     UInt16 theHostPort = 554;
     char* userName = NULL;
     char* password = NULL;
@@ -353,7 +353,7 @@ char*   RTSPSourceInfo::GetLocalSDP(UInt32* newSDPLen)
     return fLocalSDP.GetAsCString();
 }
 
-char*   RTSPSourceInfo::GetAnnounceSDP(UInt32 ipAddr, UInt32* newSDPLen)
+char*   RTSPSourceInfo::GetAnnounceSDP(Address ipAddr, UInt32* newSDPLen)
 {
     char *announceSDP = NEW char[fLocalSDP.Len * 2];
     StringFormatter announceSDPFormatter(announceSDP, fLocalSDP.Len * 2);
@@ -379,17 +379,8 @@ char*   RTSPSourceInfo::GetAnnounceSDP(UInt32 ipAddr, UInt32* newSDPLen)
                 {
                     added = true;
                     // add a c line before the first m line
-                    char ipStr[50];
-                    char buff[50] = "";
-                    StrPtrLen temp(buff);
-                
-                    struct in_addr theIPAddr;
-                    theIPAddr.s_addr = htonl(ipAddr);
-                    SocketUtils::ConvertAddrToString(theIPAddr, &temp);
-                   
-                    qtss_sprintf(ipStr, "c=IN IP4 %s", buff);
-                    StrPtrLen tempLine(ipStr);
-                    announceSDPFormatter.Put(tempLine);
+                    char buffer[SDPLINEBUFSIZE];
+                    announceSDPFormatter.Put(ipAddr.GetSDPCLine(buffer));
                     announceSDPFormatter.PutEOL();
                 }
 
@@ -503,7 +494,7 @@ Bool16 RTSPSourceInfo::Equal(SourceInfo* inInfo)
     return false;
 }
 
-void RTSPSourceInfo::SetSourceParameters(UInt32 inHostAddr, UInt16 inHostPort, StrPtrLen& inURL)
+void RTSPSourceInfo::SetSourceParameters(Address inHostAddr, UInt16 inHostPort, StrPtrLen& inURL)
 {
     fHostAddr = inHostAddr;
     fHostPort = inHostPort;
@@ -512,7 +503,7 @@ void RTSPSourceInfo::SetSourceParameters(UInt32 inHostAddr, UInt16 inHostPort, S
 
 void RTSPSourceInfo::StartSessionCreatorTask(OSQueue* inSessionQueue, OSQueue* inSourceQueue)
 {
-    InitClient(Socket::kNonBlockingSocketType);
+    InitClient(Socket::kNonBlockingSocketType, fHostAddr.GetFamily());
     SetClientInfo(fHostAddr, fHostPort, fSourceURL, fLocalAddr);
     if (fUserName != NULL)
         fClient->SetName(fUserName);

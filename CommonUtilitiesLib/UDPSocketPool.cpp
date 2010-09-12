@@ -32,11 +32,11 @@
 
 #include "UDPSocketPool.h"
 
-UDPSocketPair* UDPSocketPool::GetUDPSocketPair(UInt32 inIPAddr, UInt16 inPort,
-                                                UInt32 inSrcIPAddr, UInt16 inSrcPort)
+UDPSocketPair* UDPSocketPool::GetUDPSocketPair(Address inIPAddr, UInt16 inPort,
+                                                Address inSrcIPAddr, UInt16 inSrcPort)
 {
     OSMutexLocker locker(&fMutex);
-    if ((inSrcIPAddr != 0) || (inSrcPort != 0))
+    if (!inSrcIPAddr.IsAddrEmpty() || (inSrcPort != 0))
     {
         for (OSQueueIter qIter(&fUDPQueue); !qIter.IsDone(); qIter.Next())
         {
@@ -49,7 +49,7 @@ UDPSocketPair* UDPSocketPool::GetUDPSocketPair(UInt32 inIPAddr, UInt16 inPort,
                 //check to make sure this source IP & port is not already in the demuxer.
                 //If not, we can return this socket pair.
                 if ((theElem->fSocketB->GetDemuxer() == NULL) ||
-                    ((!theElem->fSocketB->GetDemuxer()->AddrInMap(0, 0)) &&
+                    ((!theElem->fSocketB->GetDemuxer()->AddrInMap(Address(), 0)) &&
                     (!theElem->fSocketB->GetDemuxer()->AddrInMap(inSrcIPAddr, inSrcPort))))
                 {
                     theElem->fRefCount++;
@@ -78,7 +78,7 @@ void UDPSocketPool::ReleaseUDPSocketPair(UDPSocketPair* inPair)
     }
 }
 
-UDPSocketPair*  UDPSocketPool::CreateUDPSocketPair(UInt32 inAddr, UInt16 inPort)
+UDPSocketPair*  UDPSocketPool::CreateUDPSocketPair(Address inAddr, UInt16 inPort)
 {
    //try to find an open pair of ports to bind these suckers tooo
     OSMutexLocker locker(&fMutex);
@@ -102,12 +102,12 @@ UDPSocketPair*  UDPSocketPool::CreateUDPSocketPair(UInt32 inAddr, UInt16 inPort)
         
         theElem = ConstructUDPSocketPair();
         Assert(theElem != NULL);
-        if (theElem->fSocketA->Open() != OS_NoErr)
+        if (theElem->fSocketA->Open(inAddr.GetFamily()) != OS_NoErr)
         {
             this->DestructUDPSocketPair(theElem);
             return NULL;
         }
-        if (theElem->fSocketB->Open() != OS_NoErr)
+        if (theElem->fSocketB->Open(inAddr.GetFamily()) != OS_NoErr)
         {
             this->DestructUDPSocketPair(theElem);
             return NULL;

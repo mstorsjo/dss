@@ -412,20 +412,20 @@ void UDPSocketPair::Close()
     fSocketRTCp = 0;
 }
 
-SInt16 UDPSocketPair::Open()
+SInt16 UDPSocketPair::Open(int family)
 {
     SInt16 result = 0;
     do
     {
         Close();
         
-        fSocketRTp = ::socket(PF_INET, SOCK_DGRAM, 0);
+        fSocketRTp = ::socket(family, SOCK_DGRAM, 0);
         if (fSocketRTp == kInvalidSocket)
         {   result = kInvalidSocket; 
             break;
         }
         
-        fSocketRTCp = ::socket(PF_INET, SOCK_DGRAM, 0);
+        fSocketRTCp = ::socket(family, SOCK_DGRAM, 0);
         if (fSocketRTCp == kInvalidSocket)
         {   result = kInvalidSocket; 
             break;
@@ -459,30 +459,15 @@ SInt16 UDPSocketPair::Open()
     return result;
 }
 
-void UDPSocketPair::InitPorts(UInt32 addr)
+void UDPSocketPair::InitPorts(Address addr)
 {
-    ::memset(&fLocalAddrRTp, 0, sizeof(fLocalAddrRTp));
-    fLocalAddrRTp.sin_family = PF_INET;
-    fLocalAddrRTp.sin_port = htons(0);
-    fLocalAddrRTp.sin_addr.s_addr = htonl(addr);
-
-    ::memset(&fLocalAddrRTCp, 0, sizeof(fLocalAddrRTCp));
-    fLocalAddrRTCp.sin_family = PF_INET;
-    fLocalAddrRTCp.sin_port = htons(0);
-    fLocalAddrRTCp.sin_addr.s_addr = htonl(addr);
-
-    ::memset(&fDestAddrRTp, 0, sizeof(fDestAddrRTp));
-    fDestAddrRTp.sin_family = PF_INET;
-    fDestAddrRTp.sin_port = htons(0);
-    fDestAddrRTp.sin_addr.s_addr = htonl(addr);
-
-    ::memset(&fDestAddrRTCp, 0, sizeof(fDestAddrRTCp));
-    fDestAddrRTCp.sin_family = PF_INET;
-    fDestAddrRTCp.sin_port = htons(0);
-    fDestAddrRTCp.sin_addr.s_addr = htonl(addr);
+    fLocalAddrRTp = addr;
+    fLocalAddrRTCp = addr;
+    fDestAddrRTp = addr;
+    fDestAddrRTCp = addr;
 }
 
-SInt16 UDPSocketPair::Bind(UInt32 addr)
+SInt16 UDPSocketPair::Bind(Address addr)
 {
     int err = -1;
      
@@ -502,12 +487,12 @@ SInt16 UDPSocketPair::Bind(UInt32 addr)
         PortRTCp = count;
         Assert( (PortRTCp & 1) == 1);// must be odd and one more than rtp port
         
-        fLocalAddrRTp.sin_port = htons( (UInt16) PortRTp);
-        fLocalAddrRTCp.sin_port = htons( (UInt16) PortRTCp);
+        fLocalAddrRTp.SetPort(PortRTp);
+        fLocalAddrRTCp.SetPort(PortRTCp);
             
         //qtss_printf("Attempting to bind to rtp port %d \n",PortRTp);
         
-        err = ::bind(fSocketRTp, (sockaddr *)&fLocalAddrRTp, sizeof(fLocalAddrRTp));
+        err = ::bind(fSocketRTp, fLocalAddrRTp.GetSockAddr(), fLocalAddrRTp.GetSockLen());
         if (err != 0)
         {   
             //qtss_printf("UDPSocketPair::Bind Error binding to rtp port %d \n",PortRTp);
@@ -515,12 +500,12 @@ SInt16 UDPSocketPair::Bind(UInt32 addr)
             continue;
         }
 
-        err = ::bind(fSocketRTCp, (sockaddr *)&fLocalAddrRTCp, sizeof(fLocalAddrRTCp)); 
+        err = ::bind(fSocketRTCp, fLocalAddrRTCp.GetSockAddr(), fLocalAddrRTCp.GetSockLen());
         if (err != 0)
         {
             //qtss_printf("UDPSocketPair::Bind Error binding to rtcp port %d \n",PortRTp);
             Close();
-            Open();
+            Open(addr.GetFamily());
             InitPorts(addr);
             continue;
         }  
@@ -537,17 +522,16 @@ SInt16 UDPSocketPair::Bind(UInt32 addr)
 }
 
 
-SInt16 UDPSocketPair::SendTo(int socket, sockaddr *destAddrPtr, char* inBuffer, UInt32 inLength )
+SInt16 UDPSocketPair::SendTo(int socket, Address destAddr, char* inBuffer, UInt32 inLength )
 {
     SInt16 result = -1;
     do
     {
         if (inBuffer == NULL) break;        
-        if (destAddrPtr == NULL) break;         
         if (socket == kInvalidSocket) break;
         
         //qtss_printf("Sending data to %d. Addr = %d inLength = %d\n", ntohs(theAddr->sin_port), ntohl(theAddr->sin_addr.s_addr), inLength);
-        ::sendto(socket, inBuffer, inLength, 0, destAddrPtr, sizeof(sockaddr));
+        ::sendto(socket, inBuffer, inLength, 0, destAddr.GetSockAddr(), destAddr.GetSockLen());
         
         result = 0;
     } while (false);
@@ -564,7 +548,7 @@ SInt16 UDPSocketPair::SendRTp(char* inBuffer, UInt32 inLength)
         return (SInt16) fBroadcasterSession->SendPacket(inBuffer,inLength,fChannel);
     }
     else
-        return SendTo(fSocketRTp, (sockaddr*)&fDestAddrRTp, inBuffer, inLength );
+        return SendTo(fSocketRTp, fDestAddrRTp, inBuffer, inLength );
 }
 
 SInt16 UDPSocketPair::SendRTCp(char* inBuffer, UInt32 inLength)
@@ -574,7 +558,7 @@ SInt16 UDPSocketPair::SendRTCp(char* inBuffer, UInt32 inLength)
         return (SInt16) fBroadcasterSession->SendPacket(inBuffer,inLength,fChannel+1);
     }
     else
-        return SendTo(fSocketRTCp, (sockaddr*)&fDestAddrRTCp, inBuffer, inLength );
+        return SendTo(fSocketRTCp, fDestAddrRTCp, inBuffer, inLength );
 }
 
 SInt16  UDPSocketPair::SetDestination (char *destAddress,UInt16 destPortRTp, UInt16 destPortRTCp)
@@ -582,17 +566,15 @@ SInt16  UDPSocketPair::SetDestination (char *destAddress,UInt16 destPortRTp, UIn
     SInt16 result = -1;
 
     if (destAddress != NULL)
-    {   UInt32 netAddress = inet_addr(destAddress);
+    {   Address netAddress = SocketUtils::ConvertStringToAddr(destAddress);
     
-        fDestAddrRTp = fLocalAddrRTp; 
-        fDestAddrRTp.sin_port = htons(destPortRTp); 
-        fDestAddrRTp.sin_addr.s_addr = netAddress;
+        fDestAddrRTp = netAddress;
+        fDestAddrRTp.SetPort(destPortRTp);
         
-        fDestAddrRTCp = fLocalAddrRTCp;
-        fDestAddrRTCp.sin_port = htons(destPortRTCp);       
-        fDestAddrRTCp.sin_addr.s_addr =  netAddress;
+        fDestAddrRTCp = netAddress;
+        fDestAddrRTCp.SetPort(destPortRTCp);
         
-        fIsMultiCast = SocketUtils::IsMulticastIPAddr(ntohl(netAddress));
+        fIsMultiCast = SocketUtils::IsMulticastIPAddr(netAddress);
 
         result = 0;
     }
@@ -602,13 +584,7 @@ SInt16  UDPSocketPair::SetDestination (char *destAddress,UInt16 destPortRTp, UIn
 SInt16 UDPSocketPair::SetMulticastInterface()
 {
     // set the outgoing interface for multicast datagrams on this socket
-    in_addr theLocalAddr;
-    ::memset(&theLocalAddr, 0, sizeof(theLocalAddr));
-    
-    theLocalAddr.s_addr = fLocalAddrRTp.sin_addr.s_addr;
-    int err = setsockopt(fSocketRTp, IPPROTO_IP, IP_MULTICAST_IF, (char*)&theLocalAddr, sizeof(theLocalAddr));
-
-    return err; 
+    return fLocalAddrRTp.SetMulticastInterface(fSocketRTp);
 }
 
 SInt16 UDPSocketPair::JoinMulticast()
@@ -616,20 +592,8 @@ SInt16 UDPSocketPair::JoinMulticast()
     int err = 0;
 
     
-    UInt32 localAddr = fLocalAddrRTp.sin_addr.s_addr; // Already in network byte order
-
-#if __solaris__
-    if( localAddr == htonl(INADDR_ANY) )
-         localAddr = htonl(SocketUtils::GetIPAddr(0));
-#endif
-
-    struct ip_mreq  theMulti;
-    ::memset(&theMulti, 0, sizeof(theMulti));
-
-    theMulti.imr_multiaddr.s_addr = fDestAddrRTp.sin_addr.s_addr;
-    theMulti.imr_interface.s_addr = localAddr;
-    err = setsockopt(fSocketRTp, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
-    (void) setsockopt(fSocketRTCp, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
+    err = fLocalAddrRTp.JoinMulticast(fSocketRTp, fDestAddrRTp);
+    fLocalAddrRTp.JoinMulticast(fSocketRTCp, fDestAddrRTp);
 
     if (err == 0)
         fMultiCastJoined = true;
@@ -641,37 +605,23 @@ SInt16 UDPSocketPair::JoinMulticast()
 SInt16 UDPSocketPair::SetTTL(SInt16 timeToLive)
 {
     // set the ttl
-    int nOptVal = (int)timeToLive;
     int err = 0;
     
-    err = setsockopt(fSocketRTp, IPPROTO_IP, IP_MULTICAST_TTL, (char*)&nOptVal, sizeof(nOptVal));
+    err = fLocalAddrRTp.SetTTL(fSocketRTp, timeToLive);
     if (err != 0) return err;
 
-    err = setsockopt(fSocketRTCp, IPPROTO_IP, IP_MULTICAST_TTL, (char*)&nOptVal, sizeof(nOptVal));
+    err = fLocalAddrRTp.SetTTL(fSocketRTCp, timeToLive);
     return err; 
 }
 
 SInt16 UDPSocketPair::LeaveMulticast()
 { 
-   UInt32 localAddr = fLocalAddrRTp.sin_addr.s_addr; // Already in network byte order
-
-#if __solaris__
-    if( localAddr == htonl(INADDR_ANY) )
-         localAddr = htonl(SocketUtils::GetIPAddr(0));
-#endif
-
-    struct ip_mreq  theMulti;
-    ::memset(&theMulti, 0, sizeof(theMulti));
-    
-    theMulti.imr_multiaddr.s_addr = fDestAddrRTp.sin_addr.s_addr;
-    theMulti.imr_interface.s_addr = localAddr;
-    
-    int err = setsockopt(fSocketRTp, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
-    (void) setsockopt(fSocketRTCp, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
+    int err = fLocalAddrRTp.LeaveMulticast(fSocketRTp, fDestAddrRTp);
+    fLocalAddrRTp.LeaveMulticast(fSocketRTCp, fDestAddrRTp);
     return err;
 }
 
-SInt16 UDPSocketPair::RecvFrom(sockaddr *RecvRTpddrPtr, int socket, char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen)
+SInt16 UDPSocketPair::RecvFrom(Address *RecvRTpddrPtr, int socket, char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen)
 {
     SInt16  result = -1;
     
@@ -681,7 +631,7 @@ SInt16 UDPSocketPair::RecvFrom(sockaddr *RecvRTpddrPtr, int socket, char* ioBuff
         if (RecvRTpddrPtr == NULL) break;
         if (socket == kInvalidSocket) break;
         
-        sockaddr_in theAddr;
+        sockaddr_storage theAddr;
 #if __Win32__ || __osf__ || __sgi__  || __hpux__ 
         int addrLen = sizeof(theAddr);
 #else
@@ -698,12 +648,12 @@ SInt16 UDPSocketPair::RecvFrom(sockaddr *RecvRTpddrPtr, int socket, char* ioBuff
 
 SInt16 UDPSocketPair::RecvRTp(char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen)
 {
-    return RecvFrom( (sockaddr *)&fDestAddrRTp, fSocketRTp, ioBuffer, inBufLen, outRecvLen);
+    return RecvFrom( &fDestAddrRTp, fSocketRTp, ioBuffer, inBufLen, outRecvLen);
 }
 
 SInt16 UDPSocketPair::RecvRTCp(char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen)
 {
-    return  RecvFrom( (sockaddr *)&fDestAddrRTCp, fSocketRTCp, ioBuffer, inBufLen, outRecvLen);
+    return  RecvFrom( &fDestAddrRTCp, fSocketRTCp, ioBuffer, inBufLen, outRecvLen);
 }
 
 SInt16 UDPSocketPair::SetMultiCastOptions(SInt16 ttl)
@@ -733,12 +683,13 @@ SInt16 UDPSocketPair::OpenAndBind( UInt16 rtpPort,UInt16 rtcpPort,char *destAddr
 {
     SInt16 err = -1;
         
+    Address dest = Address::ConvertStringToAddress(destAddress);
     do
     {
-        err = this->Open();
+        err = this->Open(dest.GetFamily());
         if (err != 0) break;
         
-        err = this->Bind(INADDR_ANY);
+        err = this->Bind(Address::CreateAnyAddressOfFamily(dest.GetFamily()));
         if (err != 0) break;
         
         err = this->SetDestination (destAddress, rtpPort, rtcpPort);    

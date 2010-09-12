@@ -58,15 +58,15 @@ class UDPSocketPool
         //inSrcIPAddr = srcIP address of incoming packets for the demuxer.
         //inSrcPort = src port of incoming packets for the demuxer.
         //This may return NULL if no pair is available that meets the criteria.
-        UDPSocketPair*  GetUDPSocketPair(UInt32 inIPAddr, UInt16 inPort,
-                                            UInt32 inSrcIPAddr, UInt16 inSrcPort);
+        UDPSocketPair*  GetUDPSocketPair(Address inIPAddr, UInt16 inPort,
+                                            Address inSrcIPAddr, UInt16 inSrcPort);
         
         //When done using a UDP socket pair retrieved via GetUDPSocketPair, you must
         //call this function. Doing so tells the pool which UDP sockets are in use,
         //keeping the number of UDP sockets allocated at a minimum.
         void ReleaseUDPSocketPair(UDPSocketPair* inPair);
 
-        UDPSocketPair*  CreateUDPSocketPair(UInt32 inAddr, UInt16 inPort);
+        UDPSocketPair*  CreateUDPSocketPair(Address inAddr, UInt16 inPort);
         
     protected:
     

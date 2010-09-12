@@ -152,12 +152,12 @@ class UDPSocketPair
     int                 fMaxBindAttempts;
     int                 fState;
     int                 fSocketRTp;
-    struct sockaddr_in  fLocalAddrRTp;
-    struct sockaddr_in  fDestAddrRTp;
+    Address             fLocalAddrRTp;
+    Address             fDestAddrRTp;
     
     int                 fSocketRTCp;
-    struct sockaddr_in  fLocalAddrRTCp;
-    struct sockaddr_in  fDestAddrRTCp;
+    Address             fLocalAddrRTCp;
+    Address             fDestAddrRTCp;
     BroadcasterSession *fBroadcasterSession;
     UInt8               fChannel;
     Bool16              fIsMultiCast;
@@ -174,10 +174,10 @@ class UDPSocketPair
                         {};  
     ~UDPSocketPair() { Close(); };
     
-    SInt16  Open();
+    SInt16  Open(int family);
     void    Close();
-    void    InitPorts(UInt32 addr);
-    SInt16  Bind(UInt32 addr);
+    void    InitPorts(Address addr);
+    SInt16  Bind(Address addr);
     SInt16  OpenAndBind( UInt16 rtpPort,UInt16 rtcpPort,char *destAddress);
 
     SInt16  SetDestination (char *destAddress,UInt16 destPortRTp, UInt16 destPortRTCp);
@@ -187,11 +187,11 @@ class UDPSocketPair
     SInt16  SetMulticastInterface();
     SInt16  SetMultiCastOptions(SInt16 ttl);
 
-    SInt16  SendTo(int socket, sockaddr *destAddrPtr, char* inBuffer, UInt32 inLength );
+    SInt16  SendTo(int socket, Address destAddrPtr, char* inBuffer, UInt32 inLength );
     SInt16  SendRTp(char* inBuffer, UInt32 inLength);
     SInt16  SendRTCp(char* inBuffer, UInt32 inLength);
     
-    SInt16  RecvFrom(sockaddr *recvAddrPtr, int socket, char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen);
+    SInt16  RecvFrom(Address *recvAddrPtr, int socket, char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen);
     SInt16  RecvRTp(char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen);
     SInt16  RecvRTCp(char* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen);
 

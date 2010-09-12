@@ -143,10 +143,10 @@ int QTFileBroadcaster::SetUp(PLBroadcastDef *broadcastDefPtr, bool *quitImmediat
             UInt16          rtpPort = 0;
             UInt16          rtcpPort = 0;
             TypeMap*        mediaTypePtr;
-            char            sdpIPAddress[32];
+            char            sdpIPAddress[50];
             SimpleString* ipStringPtr = fStreamSDPParser.GetIPString();
             
-            if ( (NULL == ipStringPtr) || (ipStringPtr->fLen >= 32) )
+            if ( (NULL == ipStringPtr) || (ipStringPtr->fLen >= 50) )
             {   
                 result = eSDPFileInvalid;               
                 break; 

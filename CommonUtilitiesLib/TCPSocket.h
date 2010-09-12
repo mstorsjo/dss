@@ -63,7 +63,7 @@ class TCPSocket : public Socket
         virtual ~TCPSocket() {}
 
         //Open
-        OS_Error    Open() { return Socket::Open(SOCK_STREAM); }
+        OS_Error    Open(int family) { return Socket::Open(family, SOCK_STREAM); }
 
         // Connect. Attempts to connect to the specified remote host. If this
         // is a non-blocking socket, this function may return EINPROGRESS, in which
@@ -71,7 +71,7 @@ class TCPSocket : public Socket
         // CheckAsyncConnect at any time, which will return OS_NoErr if the connect
         // has completed, EINPROGRESS if it is still in progress, or an appropriate error
         // if the connect failed.
-        OS_Error    Connect(UInt32 inRemoteAddr, UInt16 inRemotePort);
+        OS_Error    Connect(Address inRemoteAddr, UInt16 inRemotePort);
         //OS_Error  CheckAsyncConnect();
 
         // Basically a copy constructor for this object, also NULLs out the data
@@ -81,21 +81,21 @@ class TCPSocket : public Socket
         //ACCESSORS:
         //Returns NULL if not currently available.
         
-        UInt32      GetRemoteAddr() { return ntohl(fRemoteAddr.sin_addr.s_addr); }
-        UInt16      GetRemotePort() { return ntohs(fRemoteAddr.sin_port); }
+        Address     GetRemoteAddr() { return fRemoteAddr; }
+        UInt16      GetRemotePort() { return fRemoteAddr.GetPort(); }
         //This function is NOT thread safe!
         StrPtrLen*  GetRemoteAddrStr();
 
     protected:
 
-        void        Set(int inSocket, struct sockaddr_in* remoteaddr);
+        void        Set(int inSocket, Address remoteaddr);
                             
         enum
         {
-            kIPAddrBufSize = 20 //UInt32
+            kIPAddrBufSize = 50 //UInt32
         };
 
-        struct sockaddr_in  fRemoteAddr;
+        Address fRemoteAddr;
         char fRemoteBuffer[kIPAddrBufSize];
         StrPtrLen fRemoteStr;
 

@@ -60,9 +60,9 @@ OS_Error TCPListenerSocket::Listen(UInt32 queueLength)
     return OS_NoErr;
 }
 
-OS_Error TCPListenerSocket::Initialize(UInt32 addr, UInt16 port)
+OS_Error TCPListenerSocket::Initialize(Address addr, UInt16 port)
 {
-    OS_Error err = this->TCPSocket::Open();
+    OS_Error err = this->TCPSocket::Open(addr.GetFamily());
     if (0 == err) do
     {   
         // set SO_REUSEADDR socket option before calling bind.
@@ -93,7 +93,7 @@ void TCPListenerSocket::ProcessEvent(int /*eventBits*/)
     //we are executing on the same thread as every other
     //socket, so whatever you do here has to be fast.
     
-    struct sockaddr_in addr;
+    struct sockaddr_storage addr;
 #if __Win32__ || __osf__ || __sgi__ || __hpux__	
     int size = sizeof(addr);
 #else
@@ -183,7 +183,7 @@ void TCPListenerSocket::ProcessEvent(int /*eventBits*/)
     
         //setup the socket. When there is data on the socket,
         //theTask will get an kReadEvent event
-        theSocket->Set(osSocket, &addr);
+        theSocket->Set(osSocket, Address((sockaddr*)&addr));
         theSocket->InitNonBlocking(osSocket);
         theSocket->SetTask(theTask);
         theSocket->RequestEvent(EV_RE);

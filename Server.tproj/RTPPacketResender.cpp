@@ -83,7 +83,6 @@ unsigned int    RTPPacketResender::sNumWastedBytes = 0;
 RTPPacketResender::RTPPacketResender()
 :   fBandwidthTracker(NULL),
     fSocket(NULL),
-    fDestAddr(0),
     fDestPort(0),
     fMaxPacketsInList(0),
     fPacketsInList(0),
@@ -219,7 +218,7 @@ UInt32 RTPPacketResender::SpillGuts(UInt32 inBytesSentThisInterval)
 #endif
 
 
-void RTPPacketResender::SetDestination(UDPSocket* inOutputSocket, UInt32 inDestAddr, UInt16 inDestPort)
+void RTPPacketResender::SetDestination(UDPSocket* inOutputSocket, Address inDestAddr, UInt16 inDestPort)
 {
     fSocket = inOutputSocket;
     fDestAddr = inDestAddr;

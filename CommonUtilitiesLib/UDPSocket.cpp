@@ -68,20 +68,18 @@ UDPSocket::UDPSocket(Task* inTask, UInt32 inSocketType)
 
 
 OS_Error
-UDPSocket::SendTo(UInt32 inRemoteAddr, UInt16 inRemotePort, void* inBuffer, UInt32 inLength)
+UDPSocket::SendTo(Address inRemoteAddr, UInt16 inRemotePort, void* inBuffer, UInt32 inLength)
 {
     Assert(inBuffer != NULL);
     
-    struct sockaddr_in  theRemoteAddr;
-    theRemoteAddr.sin_family = AF_INET;
-    theRemoteAddr.sin_port = htons(inRemotePort);
-    theRemoteAddr.sin_addr.s_addr = htonl(inRemoteAddr);
+    Address theRemoteAddr = inRemoteAddr;
+    theRemoteAddr.SetPort(inRemotePort);
 
 #ifdef __sgi__
-	int theErr = ::sendto(fFileDesc, inBuffer, inLength, 0, (sockaddr*)&theRemoteAddr, sizeof(theRemoteAddr));
+	int theErr = ::sendto(fFileDesc, inBuffer, inLength, 0, theRemoteAddr.GetSockAddr(), theRemoteAddr.GetSockLen());
 #else
     // Win32 says that inBuffer is a char*
-	int theErr = ::sendto(fFileDesc, (char*)inBuffer, inLength, 0, (sockaddr*)&theRemoteAddr, sizeof(theRemoteAddr));
+	int theErr = ::sendto(fFileDesc, (char*)inBuffer, inLength, 0, theRemoteAddr.GetSockAddr(), theRemoteAddr.GetSockLen());
 #endif
 
     if (theErr == -1)
@@ -89,7 +87,7 @@ UDPSocket::SendTo(UInt32 inRemoteAddr, UInt16 inRemotePort, void* inBuffer, UInt
     return OS_NoErr;
 }
 
-OS_Error UDPSocket::RecvFrom(UInt32* outRemoteAddr, UInt16* outRemotePort,
+OS_Error UDPSocket::RecvFrom(Address* outRemoteAddr, UInt16* outRemotePort,
                             void* ioBuffer, UInt32 inBufLen, UInt32* outRecvLen)
 {
     Assert(outRecvLen != NULL);
@@ -112,25 +110,16 @@ OS_Error UDPSocket::RecvFrom(UInt32* outRemoteAddr, UInt16* outRemotePort,
     if (theRecvLen == -1)
         return (OS_Error)OSThread::GetErrno();
     
-    *outRemoteAddr = ntohl(fMsgAddr.sin_addr.s_addr);
-    *outRemotePort = ntohs(fMsgAddr.sin_port);
+    *outRemoteAddr = Address((struct sockaddr*) &fMsgAddr);
+    *outRemotePort = outRemoteAddr->GetPort();
     Assert(theRecvLen >= 0);
     *outRecvLen = (UInt32)theRecvLen;
     return OS_NoErr;        
 }
 
-OS_Error UDPSocket::JoinMulticast(UInt32 inRemoteAddr)
+OS_Error UDPSocket::JoinMulticast(Address inRemoteAddr)
 {
-    struct ip_mreq  theMulti;
-        UInt32 localAddr = fLocalAddr.sin_addr.s_addr; // Already in network byte order
-
-#if __solaris__
-    if( localAddr == htonl(INADDR_ANY) )
-         localAddr = htonl(SocketUtils::GetIPAddr(0));
-#endif
-    theMulti.imr_multiaddr.s_addr = htonl(inRemoteAddr);
-    theMulti.imr_interface.s_addr = localAddr;
-    int err = setsockopt(fFileDesc, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
+    int err = fLocalAddr.JoinMulticast(fFileDesc, inRemoteAddr);
     //AssertV(err == 0, OSThread::GetErrno());
     if (err == -1)
          return (OS_Error)OSThread::GetErrno();
@@ -140,22 +129,16 @@ OS_Error UDPSocket::JoinMulticast(UInt32 inRemoteAddr)
 
 OS_Error UDPSocket::SetTtl(UInt16 timeToLive)
 {
-    // set the ttl
-    u_char  nOptVal = (u_char)timeToLive;//dms - stevens pp. 496. bsd implementations barf
-                                            //unless this is a u_char
-    int err = setsockopt(fFileDesc, IPPROTO_IP, IP_MULTICAST_TTL, (char*)&nOptVal, sizeof(nOptVal));
+    int err = fLocalAddr.SetTTL(fFileDesc, timeToLive);
     if (err == -1)
         return (OS_Error)OSThread::GetErrno();
     else
         return OS_NoErr;    
 }
 
-OS_Error UDPSocket::SetMulticastInterface(UInt32 inLocalAddr)
+OS_Error UDPSocket::SetMulticastInterface(Address inLocalAddr)
 {
-    // set the outgoing interface for multicast datagrams on this socket
-    in_addr theLocalAddr;
-    theLocalAddr.s_addr = inLocalAddr;
-    int err = setsockopt(fFileDesc, IPPROTO_IP, IP_MULTICAST_IF, (char*)&theLocalAddr, sizeof(theLocalAddr));
+    int err = inLocalAddr.SetMulticastInterface(fFileDesc);
     AssertV(err == 0, OSThread::GetErrno());
     if (err == -1)
         return (OS_Error)OSThread::GetErrno();
@@ -163,12 +146,9 @@ OS_Error UDPSocket::SetMulticastInterface(UInt32 inLocalAddr)
         return OS_NoErr;    
 }
 
-OS_Error UDPSocket::LeaveMulticast(UInt32 inRemoteAddr)
+OS_Error UDPSocket::LeaveMulticast(Address inRemoteAddr)
 {
-    struct ip_mreq  theMulti;
-    theMulti.imr_multiaddr.s_addr = htonl(inRemoteAddr);
-    theMulti.imr_interface.s_addr = htonl(fLocalAddr.sin_addr.s_addr);
-    int err = setsockopt(fFileDesc, IPPROTO_IP, IP_DROP_MEMBERSHIP, (char*)&theMulti, sizeof(theMulti));
+    int err = fLocalAddr.LeaveMulticast(fFileDesc, inRemoteAddr);
     if (err == -1)
         return (OS_Error)OSThread::GetErrno();
     else

@@ -51,7 +51,7 @@ UInt32          BroadcasterSession::sTotalConnectionAttempts = 0;
 
 char *BroadcasterSession::fPacket = NULL;
 
-BroadcasterSession::BroadcasterSession( UInt32 inAddr, UInt16 inPort, char* inURL,
+BroadcasterSession::BroadcasterSession( Address inAddr, UInt16 inPort, char* inURL,
                                 BroadcasterType inClientType,
                                 UInt32 inDurationInSec, UInt32 inStartPlayTimeInSec,
                                 UInt32 inRTCPIntervalInSec, UInt32 inOptionsIntervalInSec,
@@ -111,14 +111,14 @@ BroadcasterSession::BroadcasterSession( UInt32 inAddr, UInt16 inPort, char* inUR
         {
             fControlType = kRawRTSPControlType;
             fTransportType = kUDPTransportType;
-            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType);
+            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType, inAddr.GetFamily());
             break;
         }
         case kRTSPTCPBroadcasterType:
         {
             fControlType = kRawRTSPControlType;
             fTransportType = kTCPTransportType;
-            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType);
+            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType, inAddr.GetFamily());
             break;
         }
         case kRTSPHTTPBroadcasterType:
@@ -727,7 +727,7 @@ void    BroadcasterSession::SetupUDPSockets()
     for (UInt32 x = 0; x < fSDPParser.GetNumStreams() * 2; x++)
     {
         fUDPSocketArray[x] = NEW UDPSocket(this, Socket::kNonBlockingSocketType);
-        theErr = fUDPSocketArray[x]->Open();
+        theErr = fUDPSocketArray[x]->Open(fSocket->GetLocalAddr().GetFamily());
         if (theErr != OS_NoErr)
         {
             qtss_printf("BroadcasterSession: Failed to open a UDP socket.\n");
@@ -739,9 +739,11 @@ void    BroadcasterSession::SetupUDPSockets()
     {   
         for (UInt32 portCheck = 0; true; portCheck++)
         {
-            theErr = fUDPSocketArray[y * 2]->Bind(INADDR_ANY, sCurrentRTPPortToUse);
+            int family = fSocket->GetLocalAddr().GetFamily();
+            Address anyAddr = Address::CreateAnyAddressOfFamily(family);
+            theErr = fUDPSocketArray[y * 2]->Bind(anyAddr, sCurrentRTPPortToUse);
             if (theErr == OS_NoErr)
-                theErr = fUDPSocketArray[(y*2)+1]->Bind(INADDR_ANY, sCurrentRTPPortToUse + 1);
+                theErr = fUDPSocketArray[(y*2)+1]->Bind(anyAddr, sCurrentRTPPortToUse + 1);
 
             sCurrentRTPPortToUse += 2;
             if (sCurrentRTPPortToUse > 30000)
@@ -796,7 +798,7 @@ OS_Error    BroadcasterSession::ReadMediaData()
         {
             static const UInt32 kMaxPacketSize = 2048;
             
-            UInt32 theRemoteAddr = 0;
+            Address theRemoteAddr;
             UInt16 theRemotePort = 0;
             char thePacketBuf[kMaxPacketSize];
             

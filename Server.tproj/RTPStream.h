@@ -59,6 +59,8 @@
 
 #include "RTSPRequest3GPP.h"
 
+#include "Address.h"
+
 #ifndef MIN
 #define	MIN(a,b) (((a)<(b))?(a):(b))
 #endif /* MIN */
@@ -220,13 +222,13 @@ class RTPStream : public QTSSDictionary, public UDPDemuxerTask
 
         
         //who am i sending to?
-        UInt32      fRemoteAddr;
+        Address     fRemoteAddr;
         UInt16      fRemoteRTPPort;
         UInt16      fRemoteRTCPPort;
         UInt16      fLocalRTPPort;
-		UInt32	    fMonitorAddr;
+		Address	    fMonitorAddr;
 		int         fMonitorSocket;
-		UInt32      fPlayerToMonitorAddr;
+		Address     fPlayerToMonitorAddr;
 
         //RTCP stuff 
         SInt64      fLastSenderReportTime;

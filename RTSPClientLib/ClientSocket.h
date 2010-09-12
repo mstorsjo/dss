@@ -43,7 +43,7 @@ class ClientSocket
         ClientSocket();
         virtual ~ClientSocket() {}
         
-        void    Set(UInt32 hostAddr, UInt16 hostPort)
+        void    Set(Address hostAddr, UInt16 hostPort)
             { fHostAddr = hostAddr; fHostPort = hostPort; }
             
         //
@@ -70,8 +70,8 @@ class ClientSocket
         
         //
         // ACCESSORS
-        UInt32          GetHostAddr()           { return fHostAddr; }
-        virtual UInt32  GetLocalAddr() = 0;
+        Address         GetHostAddr()           { return fHostAddr; }
+        virtual Address GetLocalAddr() = 0;
 
         // If one of the above methods returns EWOULDBLOCK or EINPROGRESS, you
         // can check this to see what events you should wait for on the socket
@@ -85,11 +85,11 @@ class ClientSocket
         // Generic connect function
         OS_Error    Connect(TCPSocket* inSocket);   
         // Generic open function
-        OS_Error    Open(TCPSocket* inSocket);
+        OS_Error    Open(TCPSocket* inSocket, int family);
         
         OS_Error    SendSendBuffer(TCPSocket* inSocket);
     
-        UInt32      fHostAddr;
+        Address     fHostAddr;
         UInt16      fHostPort;
         
         UInt32      fEventMask;
@@ -110,7 +110,7 @@ class TCPClientSocket : public ClientSocket
 {
     public:
         
-        TCPClientSocket(UInt32 inSocketType);
+        TCPClientSocket(UInt32 inSocketType, int family);
         virtual ~TCPClientSocket() {}
         
         //
@@ -118,7 +118,7 @@ class TCPClientSocket : public ClientSocket
         virtual OS_Error    SendV(iovec* inVec, UInt32 inNumVecs);
         virtual OS_Error    Read(void* inBuffer, const UInt32 inLength, UInt32* outRcvLen);
 
-        virtual UInt32  GetLocalAddr() { return fSocket.GetLocalAddr(); }
+        virtual Address GetLocalAddr() { return fSocket.GetLocalAddr(); }
         virtual void    SetRcvSockBufSize(UInt32 inSize) { fSocket.SetSocketRcvBufSize(inSize); }
         virtual void    SetOptions(int sndBufSize = 8192,int rcvBufSize=1024);
         
@@ -146,7 +146,7 @@ class HTTPClientSocket : public ClientSocket
 		// Both SendV and Read use the fSendBuffer; so you cannot have both operations be running at the same time.
         virtual OS_Error    Read(void* inBuffer, const UInt32 inLength, UInt32* outRcvLen);
 
-        virtual UInt32  GetLocalAddr() { return fGetSocket.GetLocalAddr();  }
+        virtual Address GetLocalAddr() { return fGetSocket.GetLocalAddr();  }
         virtual void    SetRcvSockBufSize(UInt32 inSize) { fGetSocket.SetSocketRcvBufSize(inSize); }
 
     private:

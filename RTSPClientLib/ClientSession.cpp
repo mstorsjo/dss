@@ -89,7 +89,7 @@ char* ConvertBytesToCHexString( void* inValue, const UInt32 inValueLen)
 }
 
 
-ClientSession::ClientSession(   UInt32 inAddr, UInt16 inPort, char* inURL,
+ClientSession::ClientSession(   Address inAddr, UInt16 inPort, char* inURL,
                                 ClientType inClientType,
                                 UInt32 inDurationInSec, UInt32 inStartPlayTimeInSec,
                                 UInt32 inRTCPIntervalInMS, UInt32 inOptionsIntervalInSec,
@@ -160,9 +160,8 @@ ClientSession::ClientSession(   UInt32 inAddr, UInt16 inPort, char* inURL,
 #endif
     if ( fVerboseLevel >= 2)
     {
-        in_addr inAddrStruct;
-        inAddrStruct.s_addr = inAddr;
-        qtss_printf("Connecting to: %s, port %d\n", inet_ntoa(inAddrStruct), inPort);
+        char addrbuf[ADDRSTRLEN];
+        qtss_printf("Connecting to: %s, port %d\n", inAddr.ToNumericString(addrbuf), inPort);
     }
 
     //
@@ -173,14 +172,14 @@ ClientSession::ClientSession(   UInt32 inAddr, UInt16 inPort, char* inURL,
         {
             fControlType = kRawRTSPControlType;
             fTransportType = kUDPTransportType;
-            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType);
+            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType, inAddr.GetFamily());
             break;
         }
         case kRTSPTCPClientType:
         {
             fControlType = kRawRTSPControlType;
             fTransportType = kTCPTransportType;
-            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType);
+            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType, inAddr.GetFamily());
             break;
         }
         case kRTSPHTTPClientType:
@@ -201,7 +200,7 @@ ClientSession::ClientSession(   UInt32 inAddr, UInt16 inPort, char* inURL,
         {
             fControlType = kRawRTSPControlType;
             fTransportType = kReliableUDPTransportType;
-            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType);
+            fSocket = NEW TCPClientSocket(Socket::kNonBlockingSocketType, inAddr.GetFamily());
             break;
         }
         default:
@@ -251,7 +250,7 @@ ClientSession::~ClientSession()
             
             while (theErr == OS_NoErr)
             {
-                    UInt32 theRemoteAddr = 0;
+                    Address theRemoteAddr;
                     UInt32 theLength = 0;
                     UInt16 theRemotePort = 0;
                     char thePacketBuf[2048];
@@ -637,7 +636,7 @@ void    ClientSession::SetupUDPSockets()
     for (UInt32 x = 0; x < fSDPParser.GetNumStreams() * 2; x++)
     {
         fUDPSocketArray[x] = NEW UDPSocket(this, Socket::kNonBlockingSocketType);
-        theErr = fUDPSocketArray[x]->Open();
+        theErr = fUDPSocketArray[x]->Open(fSocket->GetLocalAddr().GetFamily());
         if (theErr != OS_NoErr)
         {
             qtss_printf("ClientSession: Failed to open a UDP socket.\n");
@@ -649,9 +648,11 @@ void    ClientSession::SetupUDPSockets()
     {   
         for (UInt32 portCheck = 0; true; portCheck++)
         {
-            theErr = fUDPSocketArray[y * 2]->Bind(INADDR_ANY, sCurrentRTPPortToUse);
+            int family = fSocket->GetLocalAddr().GetFamily();
+            Address anyAddr = Address::CreateAnyAddressOfFamily(family);
+            theErr = fUDPSocketArray[y * 2]->Bind(anyAddr, sCurrentRTPPortToUse);
             if (theErr == OS_NoErr)
-                theErr = fUDPSocketArray[(y*2)+1]->Bind(INADDR_ANY, sCurrentRTPPortToUse + 1);
+                theErr = fUDPSocketArray[(y*2)+1]->Bind(anyAddr, sCurrentRTPPortToUse + 1);
 
             sCurrentRTPPortToUse += 2;
             if (sCurrentRTPPortToUse > 30000)
@@ -706,7 +707,7 @@ OS_Error    ClientSession::ReadMediaData()
         {
             static const UInt32 kMaxPacketSize = 2048;
             
-            UInt32 theRemoteAddr = 0;
+            Address theRemoteAddr;
             UInt16 theRemotePort = 0;
             char thePacketBuf[kMaxPacketSize];
             

@@ -53,6 +53,10 @@
 #endif
 #endif
 
+#if __linux__ || __MacOSX__
+#include <ifaddrs.h>
+#endif
+
 #include "SocketUtils.h"
 
 #ifdef SIOCGIFNUM
@@ -82,7 +86,7 @@ UInt32                          SocketUtils::sNumIPAddrs = 0;
 SocketUtils::IPAddrInfo*        SocketUtils::sIPAddrInfoArray = NULL;
 OSMutex SocketUtils::sMutex;
 
-#if __FreeBSD__
+#if __FreeBSD__ || __linux__ || __MacOSX__
 
 //Complete rewrite for FreeBSD. 
 //The non-FreeBSD version really needs to be rewritten - it's a bit of a mess...
@@ -90,7 +94,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
 {
     struct ifaddrs* ifap;
     struct ifaddrs* currentifap;
-    struct sockaddr_in* sockaddr;   
+    struct sockaddr* sockaddr;
     int result = 0;
     
     result = getifaddrs(&ifap);
@@ -99,8 +103,8 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     currentifap = ifap;
     while( currentifap != NULL )
     {
-        sockaddr = (struct sockaddr_in*)currentifap->ifa_addr;
-        if (sockaddr->sin_family == AF_INET)
+        sockaddr = currentifap->ifa_addr;
+        if (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6)
             sNumIPAddrs++;
         currentifap = currentifap->ifa_next;
     }
@@ -116,38 +120,22 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     currentifap = ifap;
     while( currentifap != NULL )
     {
-        sockaddr = (struct sockaddr_in*)currentifap->ifa_addr;
+        sockaddr = currentifap->ifa_addr;
     
-        if (sockaddr->sin_family == AF_INET)
+        if (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6)
         {
-            char* theAddrStr = ::inet_ntoa(sockaddr->sin_addr);
-
             //store the IP addr
-            sIPAddrInfoArray[addrArrayIndex].fIPAddr = ntohl(sockaddr->sin_addr.s_addr);
+            sIPAddrInfoArray[addrArrayIndex].fIPAddr = Address(sockaddr);
 
             //store the IP addr as a string
+            char addrbuf[ADDRSTRLEN];
+            char* theAddrStr = sIPAddrInfoArray[addrArrayIndex].fIPAddr.ToNumericString(addrbuf);
             sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Len = ::strlen(theAddrStr);
             sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Ptr = new char[sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Len + 2];
             ::strcpy(sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Ptr, theAddrStr);
 
-            struct hostent* theDNSName = NULL;
-            if (lookupDNSName) //convert this addr to a dns name, and store it
-            {   theDNSName = ::gethostbyaddr((char *)&sockaddr->sin_addr, sizeof(sockaddr->sin_addr), AF_INET);
-            }
-            
-            if (theDNSName != NULL)
-            {
-                sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Len = ::strlen(theDNSName->h_name);
-                sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Ptr = new char[sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Len + 2];
-                ::strcpy(sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Ptr, theDNSName->h_name);
-            }
-            else
-            {
-                //if we failed to look up the DNS name, just store the IP addr as a string
-                sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Len = sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Len;
-                sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Ptr = new char[sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Len + 2];
-                ::strcpy(sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Ptr, sIPAddrInfoArray[addrArrayIndex].fIPAddrStr.Ptr);
-            }
+            sIPAddrInfoArray[addrArrayIndex].fDNSNameStr.Set(new char[NI_MAXHOST], NI_MAXHOST);
+            sIPAddrInfoArray[addrArrayIndex].fIPAddr.GetDNSString(&sIPAddrInfoArray[addrArrayIndex].fDNSNameStr);
 
             addrArrayIndex++;
         }
@@ -382,7 +370,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
         //  Assert(sNumIPAddrs > 0); // If the loopback interface is interface 0, we've got problems
     
         //Only count interfaces in the AF_INET family.
-        if (ifr->ifr_addr.sa_family == AF_INET)
+        if (ifr->ifr_addr.sa_family == AF_INET || ifr->ifr_addr.sa_family == AF_INET6)
             sNumIPAddrs++;
     }
 
@@ -476,38 +464,23 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
             return;
         }
         
-        //Only count interfaces in the AF_INET family
-        if (ifr->ifr_addr.sa_family == AF_INET)
+        //Only count interfaces in the AF_INET and AF_INET6 families
+        if (ifr->ifr_addr.sa_family == AF_INET || ifr->ifr_addr.sa_family == AF_INET6)
         {
-            struct sockaddr_in* addrPtr = (struct sockaddr_in*)&ifr->ifr_addr;  
-            char* theAddrStr = ::inet_ntoa(addrPtr->sin_addr);
+            struct sockaddr* addrPtr = (struct sockaddr*)&ifr->ifr_addr;
 
             //store the IP addr
-            sIPAddrInfoArray[currentIndex].fIPAddr = ntohl(addrPtr->sin_addr.s_addr);
+            sIPAddrInfoArray[currentIndex].fIPAddr = Address(addrPtr);
             
             //store the IP addr as a string
+            char addrbuf[ADDRSTRLEN];
+            char* theAddrStr = sIPAddrInfoArray[currentIndex].fIPAddr.ToNumericString(addrbuf);
             sIPAddrInfoArray[currentIndex].fIPAddrStr.Len = ::strlen(theAddrStr);
             sIPAddrInfoArray[currentIndex].fIPAddrStr.Ptr = new char[sIPAddrInfoArray[currentIndex].fIPAddrStr.Len + 2];
             ::strcpy(sIPAddrInfoArray[currentIndex].fIPAddrStr.Ptr, theAddrStr);
 
-            struct hostent* theDNSName = NULL;
-            if (lookupDNSName) //convert this addr to a dns name, and store it
-            {   theDNSName = ::gethostbyaddr((char *)&addrPtr->sin_addr, sizeof(addrPtr->sin_addr), AF_INET);
-            }
-            
-            if (theDNSName != NULL)
-            {
-                sIPAddrInfoArray[currentIndex].fDNSNameStr.Len = ::strlen(theDNSName->h_name);
-                sIPAddrInfoArray[currentIndex].fDNSNameStr.Ptr = new char[sIPAddrInfoArray[currentIndex].fDNSNameStr.Len + 2];
-                ::strcpy(sIPAddrInfoArray[currentIndex].fDNSNameStr.Ptr, theDNSName->h_name);
-            }
-            else
-            {
-                //if we failed to look up the DNS name, just store the IP addr as a string
-                sIPAddrInfoArray[currentIndex].fDNSNameStr.Len = sIPAddrInfoArray[currentIndex].fIPAddrStr.Len;
-                sIPAddrInfoArray[currentIndex].fDNSNameStr.Ptr = new char[sIPAddrInfoArray[currentIndex].fDNSNameStr.Len + 2];
-                ::strcpy(sIPAddrInfoArray[currentIndex].fDNSNameStr.Ptr, sIPAddrInfoArray[currentIndex].fIPAddrStr.Ptr);
-            }
+            sIPAddrInfoArray[currentIndex].fDNSNameStr.Set(new char[NI_MAXHOST], NI_MAXHOST);
+            sIPAddrInfoArray[currentIndex].fIPAddr.GetDNSString(&sIPAddrInfoArray[addrArrayIndex].fDNSNameStr);
             
             //move onto the next array index
             currentIndex++;
@@ -521,9 +494,9 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     // If LocalHost is the first element in the array, switch it to be the second.
     // The first element is supposed to be the "default" interface on the machine,
     // which should really always be en0.
-    if ((sNumIPAddrs > 1) && (::strcmp(sIPAddrInfoArray[0].fIPAddrStr.Ptr, "127.0.0.1") == 0))
+    if ((sNumIPAddrs > 1) && sIPAddrInfoArray[0].fIPAddr.IsAddrLoopback())
     {
-        UInt32 tempIP = sIPAddrInfoArray[1].fIPAddr;
+        Address tempIP = sIPAddrInfoArray[1].fIPAddr;
         sIPAddrInfoArray[1].fIPAddr = sIPAddrInfoArray[0].fIPAddr;
         sIPAddrInfoArray[0].fIPAddr = tempIP;
         StrPtrLen tempIPStr(sIPAddrInfoArray[1].fIPAddrStr);
@@ -569,12 +542,12 @@ Bool16 SocketUtils::IncrementIfReqIter(char** inIfReqIter, ifreq* ifr)
 }
 #endif
 
-Bool16 SocketUtils::IsMulticastIPAddr(UInt32 inAddress)
+Bool16 SocketUtils::IsMulticastIPAddr(Address inAddress)
 {
-    return ((inAddress>>8) & 0x00f00000) == 0x00e00000; //  multicast addresses == "class D" == 0xExxxxxxx == 1,1,1,0,<28 bits>
+    return inAddress.IsMulticast();
 }
 
-Bool16 SocketUtils::IsLocalIPAddr(UInt32 inAddress)
+Bool16 SocketUtils::IsLocalIPAddr(Address inAddress)
 {
     for (UInt32 x = 0; x < sNumIPAddrs; x++)
         if (sIPAddrInfoArray[x].fIPAddr == inAddress)
@@ -582,24 +555,11 @@ Bool16 SocketUtils::IsLocalIPAddr(UInt32 inAddress)
     return false;
 }
 
-void SocketUtils::ConvertAddrToString(const struct in_addr& theAddr, StrPtrLen* ioStr)
-{
-    //re-entrant version of code below
-    //inet_ntop(AF_INET, &theAddr, ioStr->Ptr, ioStr->Len);
-    //ioStr->Len = ::strlen(ioStr->Ptr);
-    
-    sMutex.Lock();
-    char* addr = inet_ntoa(theAddr);
-    strcpy(ioStr->Ptr, addr);
-    ioStr->Len = ::strlen(ioStr->Ptr);
-    sMutex.Unlock();
-}
-
-UInt32 SocketUtils::ConvertStringToAddr(const char* inAddrStr)
+Address SocketUtils::ConvertStringToAddr(const char* inAddrStr)
 {
     if (inAddrStr == NULL)
-        return 0;
+        return Address();
         
-    return ntohl(::inet_addr(inAddrStr));
+    return Address::ConvertStringToAddress(inAddrStr, false);
 }
 

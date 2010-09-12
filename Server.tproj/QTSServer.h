@@ -37,6 +37,7 @@
 
 #include "QTSServerInterface.h"
 #include "Task.h"
+#include "Address.h"
 
 class RTCPTask;
 class RTSPListenerSocket;
@@ -141,7 +142,7 @@ class QTSServer : public QTSServerInterface
         // Call module init roles
         void                    DoInitRole();
         void                    SetupPublicHeader();
-        UInt32*                 GetRTSPIPAddrs(QTSServerPrefs* inPrefs, UInt32* outNumAddrsPtr);
+        Address*                GetRTSPIPAddrs(QTSServerPrefs* inPrefs, UInt32* outNumAddrsPtr);
         UInt16*                 GetRTSPPorts(QTSServerPrefs* inPrefs, UInt32* outNumPortsPtr);
         
         // Build & destroy the optimized role / module arrays for invoking modules

@@ -132,7 +132,6 @@ ReflectorStream::ReflectorStream(SourceInfo::StreamInfo* inInfo)
     fNumElements(0),
     fBucketMutex(),
     
-    fDestRTCPAddr(0),
     fDestRTCPPort(0),
     
     fCurrentBitRate(0),
@@ -391,7 +390,7 @@ QTSS_Error ReflectorStream::BindSockets(QTSS_StandardRTSP_Params* inParams, UInt
     // change submitted by denis@berlin.ccc.de
     Bool16 isMulticastDest = (SocketUtils::IsMulticastIPAddr(fStreamInfo.fDestIPAddr));
     if (isMulticastDest) {
-        fSockets = sSocketPool.GetUDPSocketPair(INADDR_ANY, fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
+        fSockets = sSocketPool.GetUDPSocketPair(Address::CreateAnyAddressOfFamily(fStreamInfo.fDestIPAddr.GetFamily()), fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
     } else {
         fSockets = sSocketPool.GetUDPSocketPair(fStreamInfo.fDestIPAddr, fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
     }   
@@ -400,7 +399,7 @@ QTSS_Error ReflectorStream::BindSockets(QTSS_StandardRTSP_Params* inParams, UInt
     {
         fStreamInfo.fPort = 0;
         if (isMulticastDest) {
-            fSockets = sSocketPool.GetUDPSocketPair(INADDR_ANY, fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
+            fSockets = sSocketPool.GetUDPSocketPair(Address::CreateAnyAddressOfFamily(fStreamInfo.fDestIPAddr.GetFamily()), fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
         } else {
             fSockets = sSocketPool.GetUDPSocketPair(fStreamInfo.fDestIPAddr, fStreamInfo.fPort, fStreamInfo.fSrcIPAddr, 0);
         }       
@@ -413,7 +412,7 @@ QTSS_Error ReflectorStream::BindSockets(QTSS_StandardRTSP_Params* inParams, UInt
     // on the same port by that source IP address. If we don't know the source IP addr,
     // it is impossible for us to demux, and therefore we shouldn't allow multiple
     // broadcasts on the same port.
-    if (((ReflectorSocket*)fSockets->GetSocketA())->HasSender() && (fStreamInfo.fSrcIPAddr == 0))
+    if (((ReflectorSocket*)fSockets->GetSocketA())->HasSender() && fStreamInfo.fSrcIPAddr.IsAddrEmpty())
         return QTSSModuleUtils::SendErrorResponse(inRequest, qtssServerInternal,
                                                     sCantBindReflectorSocketErr);
     
@@ -473,7 +472,7 @@ void ReflectorStream::SendReceiverReport()
 {
     // Check to see if our destination RTCP addr & port are setup. They may
     // not be if the source is unicast and we haven't gotten any incoming packets yet
-    if (fDestRTCPAddr == 0)
+    if (fDestRTCPAddr.IsAddrEmpty())
         return;
     
     UInt32 theEyeCount = this->GetEyeCount();    
@@ -504,7 +503,7 @@ void ReflectorStream::PushPacket(char *packet, UInt32 packetLen, Bool16 isRTCP)
             
             OSMutexLocker locker( ((ReflectorSocket*)(fSockets->GetSocketB()) )->GetDemuxer()->GetMutex());
             thePacket->SetPacketData(packet, packetLen);
-            ((ReflectorSocket*)fSockets->GetSocketB())->ProcessPacket(OS::Milliseconds(),thePacket,0,0);
+            ((ReflectorSocket*)fSockets->GetSocketB())->ProcessPacket(OS::Milliseconds(),thePacket,Address(),0);
             ((ReflectorSocket*)fSockets->GetSocketB())->Signal(Task::kIdleEvent);
         }
         else
@@ -517,7 +516,7 @@ void ReflectorStream::PushPacket(char *packet, UInt32 packetLen, Bool16 isRTCP)
     
             OSMutexLocker locker(((ReflectorSocket*)(fSockets->GetSocketA()))->GetDemuxer()->GetMutex());
             thePacket->SetPacketData(packet, packetLen);
-             ((ReflectorSocket*)fSockets->GetSocketA())->ProcessPacket(OS::Milliseconds(),thePacket,0,0);
+             ((ReflectorSocket*)fSockets->GetSocketA())->ProcessPacket(OS::Milliseconds(),thePacket,Address(),0);
              ((ReflectorSocket*)fSockets->GetSocketA())->Signal(Task::kIdleEvent);
         }
     }
@@ -1403,7 +1402,7 @@ void ReflectorSocket::FilterInvalidSSRCs(ReflectorPacket* thePacket,Bool16 isRTC
     }while (false);
 }
 
-Bool16 ReflectorSocket::ProcessPacket(const SInt64& inMilliseconds,ReflectorPacket* thePacket,UInt32 theRemoteAddr,UInt16 theRemotePort)
+Bool16 ReflectorSocket::ProcessPacket(const SInt64& inMilliseconds,ReflectorPacket* thePacket,Address theRemoteAddr,UInt16 theRemotePort)
 {   
     Bool16 done = false; // stop when result is true
     if (thePacket != NULL) do
@@ -1459,7 +1458,7 @@ Bool16 ReflectorSocket::ProcessPacket(const SInt64& inMilliseconds,ReflectorPack
         ReflectorSender* theSender = (ReflectorSender*)this->GetDemuxer()->GetTask(theRemoteAddr, 0);
         // If there is a generic sender for this socket, use it.
         if (theSender == NULL)
-            theSender = (ReflectorSender*)this->GetDemuxer()->GetTask(0, 0);
+            theSender = (ReflectorSender*)this->GetDemuxer()->GetTask(Address(), 0);
         
         if (theSender == NULL)
         {   
@@ -1477,7 +1476,7 @@ Bool16 ReflectorSocket::ProcessPacket(const SInt64& inMilliseconds,ReflectorPack
          // Check to see if we need to set the remote RTCP address
         // for this stream. This will be necessary if the source is unicast.
 #ifdef NAT_WORKAROUND
-        if ((theRemoteAddr != 0) && ((theSender->fStream->fDestRTCPAddr == 0) || (thePacket->IsRTCP()))) // Submitted fix from  denis@berlin.ccc.de
+        if (!theRemoteAddr.IsAddrEmpty() && (theSender->fStream->fDestRTCPAddr.IsAddrEmpty() || (thePacket->IsRTCP()))) // Submitted fix from  denis@berlin.ccc.de
         {
             Assert(!SocketUtils::IsMulticastIPAddr(theSender->fStream->fStreamInfo.fDestIPAddr));
             Assert(theRemotePort != 0);
@@ -1587,7 +1586,7 @@ Bool16 ReflectorSocket::ProcessPacket(const SInt64& inMilliseconds,ReflectorPack
 void ReflectorSocket::GetIncomingData(const SInt64& inMilliseconds)
 {
     OSMutexLocker locker(this->GetDemuxer()->GetMutex());
-    UInt32 theRemoteAddr = 0;
+    Address theRemoteAddr;
     UInt16 theRemotePort = 0;
     //get all the outstanding packets for this socket
     while (true)

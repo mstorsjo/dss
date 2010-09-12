@@ -43,6 +43,7 @@
 #include "StrPtrLen.h"
 #include "OSQueue.h"
 #include "OS.h"
+#include "Address.h"
 
 class SourceInfo
 {
@@ -67,13 +68,13 @@ class SourceInfo
         // the following metadata.
         struct StreamInfo
         {
-            StreamInfo() : fSrcIPAddr(0), fDestIPAddr(0), fPort(0), fTimeToLive(0), fPayloadType(0), fPayloadName(NULL), fTrackID(0), fBufferDelay((Float32) eDefaultBufferDelay), fIsTCP(false),fSetupToReceive(false), fTimeScale(0){}
+            StreamInfo() : fPort(0), fTimeToLive(0), fPayloadType(0), fPayloadName(NULL), fTrackID(0), fBufferDelay((Float32) eDefaultBufferDelay), fIsTCP(false),fSetupToReceive(false), fTimeScale(0){}
             ~StreamInfo(); // Deletes the memory allocated for the fPayloadName string 
             
             void Copy(const StreamInfo& copy);// Does copy dynamically allocated data
             
-            UInt32 fSrcIPAddr;  // Src IP address of content (this may be 0 if not known for sure)
-            UInt32 fDestIPAddr; // Dest IP address of content (destination IP addr for source broadcast!)
+            Address fSrcIPAddr; // Src IP address of content (this may be 0 if not known for sure)
+            Address fDestIPAddr; // Dest IP address of content (destination IP addr for source broadcast!)
             UInt16 fPort;       // Dest (RTP) port of source content
             UInt16 fTimeToLive; // Ttl for this stream
             QTSS_RTPPayloadType fPayloadType;   // Payload type of this stream
@@ -97,7 +98,7 @@ class SourceInfo
         // contains one RTP port for each incoming stream.
         struct OutputInfo
         {
-            OutputInfo() : fDestAddr(0), fLocalAddr(0), fTimeToLive(0), fPortArray(NULL), fNumPorts(0), fBasePort(0), fAlreadySetup(false) {}
+            OutputInfo() : fTimeToLive(0), fPortArray(NULL), fNumPorts(0), fBasePort(0), fAlreadySetup(false) {}
             ~OutputInfo(); // Deletes the memory allocated for fPortArray
             
             // Returns true if the two are equal
@@ -105,8 +106,8 @@ class SourceInfo
             
             void Copy(const OutputInfo& copy);// Does copy dynamically allocated data
 
-            UInt32 fDestAddr;       // Destination address to forward the input onto
-            UInt32 fLocalAddr;      // Address of local interface to send out on (may be 0)
+            Address fDestAddr;      // Destination address to forward the input onto
+            Address fLocalAddr;     // Address of local interface to send out on (may be 0)
             UInt16 fTimeToLive;     // Time to live for resulting output (if multicast)
             UInt16* fPortArray;     // 1 destination RTP port for each Stream.
             UInt32 fNumPorts;       // Size of the fPortArray (usually equal to fNumStreams)
@@ -153,7 +154,7 @@ class SourceInfo
     protected:
         
         //utility function used by IsReflectable
-        Bool16 IsReflectableIPAddr(UInt32 inIPAddr);
+        Bool16 IsReflectableIPAddr(Address inIPAddr);
 
         StreamInfo* fStreamArray;
         UInt32      fNumStreams;

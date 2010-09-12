@@ -39,6 +39,7 @@
 
 #include "TCPSocket.h"
 #include "IdleTask.h"
+#include "Address.h"
 
 class TCPListenerSocket : public TCPSocket, public IdleTask
 {
@@ -53,7 +54,7 @@ class TCPListenerSocket : public TCPSocket, public IdleTask
                 
         //addr = listening address. port = listening port. Automatically
         //starts listening
-        OS_Error        Initialize(UInt32 addr, UInt16 port);
+        OS_Error        Initialize(Address addr, UInt16 port);
 
         //You can query the listener to see if it is failing to accept
         //connections because the OS is out of descriptors.

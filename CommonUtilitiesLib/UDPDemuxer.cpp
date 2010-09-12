@@ -36,7 +36,7 @@
 #include <errno.h>
 
 
-OS_Error UDPDemuxer::RegisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
+OS_Error UDPDemuxer::RegisterTask(Address inRemoteAddr, UInt16 inRemotePort,
                                         UDPDemuxerTask *inTaskP)
 {
     Assert(NULL != inTaskP);
@@ -48,7 +48,7 @@ OS_Error UDPDemuxer::RegisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
     return OS_NoErr;
 }
 
-OS_Error UDPDemuxer::UnregisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
+OS_Error UDPDemuxer::UnregisterTask(Address inRemoteAddr, UInt16 inRemotePort,
                                             UDPDemuxerTask *inTaskP)
 {
     OSMutexLocker locker(&fMutex);
@@ -64,7 +64,7 @@ OS_Error UDPDemuxer::UnregisterTask(UInt32 inRemoteAddr, UInt16 inRemotePort,
         return EPERM;
 }
 
-UDPDemuxerTask* UDPDemuxer::GetTask(UInt32 inRemoteAddr, UInt16 inRemotePort)
+UDPDemuxerTask* UDPDemuxer::GetTask(Address inRemoteAddr, UInt16 inRemotePort)
 {
     UDPDemuxerKey theKey(inRemoteAddr, inRemotePort);
     return fHashTable.Map(&theKey);

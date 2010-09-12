@@ -76,7 +76,7 @@ class RTPPacketResender
         
         //
         // These must be called before using the object
-        void                SetDestination(UDPSocket* inOutputSocket, UInt32 inDestAddr, UInt16 inDestPort);
+        void                SetDestination(UDPSocket* inOutputSocket, Address inDestAddr, UInt16 inDestPort);
         void                SetBandwidthTracker(RTPBandwidthTracker* inTracker) { fBandwidthTracker = inTracker; }
         
         //
@@ -125,7 +125,7 @@ class RTPPacketResender
         
         // Who to send to
         UDPSocket*          fSocket;
-        UInt32              fDestAddr;
+        Address             fDestAddr;
         UInt16              fDestPort;
 
         UInt32              fMaxPacketsInList;

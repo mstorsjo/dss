@@ -659,7 +659,7 @@ void RTSPRequest::ParseTransportOptionsHeader()
 }
 
 
-void RTSPRequest::ParseAddrSubHeader(StrPtrLen* inSubHeader, StrPtrLen* inHeaderName, UInt32* outAddr)
+void RTSPRequest::ParseAddrSubHeader(StrPtrLen* inSubHeader, StrPtrLen* inHeaderName, Address* outAddr)
 {
     if (!inSubHeader || !inHeaderName || !outAddr)
         return;

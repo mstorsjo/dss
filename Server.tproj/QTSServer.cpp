@@ -320,8 +320,8 @@ Bool16 QTSServer::SetDefaultIPAddr()
 
     //find out what our default IP addr is & dns name
     UInt32 theNumAddrs = 0;
-    UInt32* theIPAddrs = this->GetRTSPIPAddrs(fSrvrPrefs, &theNumAddrs);
-    if (theNumAddrs == 1)
+    Address* theIPAddrs = this->GetRTSPIPAddrs(fSrvrPrefs, &theNumAddrs);
+    if (theNumAddrs == Address::CountAnyAddresses())
         fDefaultIPAddr = SocketUtils::GetIPAddr(0);
     else
         fDefaultIPAddr = theIPAddrs[0];
@@ -353,10 +353,10 @@ Bool16 QTSServer::CreateListeners(Bool16 startListeningNow, QTSServerPrefs* inPr
 {
     struct PortTracking
     {
-        PortTracking() : fPort(0), fIPAddr(0), fNeedsCreating(true) {}
+        PortTracking() : fPort(0), fNeedsCreating(true) {}
         
         UInt16 fPort;
-        UInt32 fIPAddr;
+        Address fIPAddr;
         Bool16 fNeedsCreating;
     };
     
@@ -365,7 +365,7 @@ Bool16 QTSServer::CreateListeners(Bool16 startListeningNow, QTSServerPrefs* inPr
     
     // Get the IP addresses from the pref
     UInt32 theNumAddrs = 0;
-    UInt32* theIPAddrs = this->GetRTSPIPAddrs(inPrefs, &theNumAddrs);   
+    Address* theIPAddrs = this->GetRTSPIPAddrs(inPrefs, &theNumAddrs);
     UInt32 index = 0;
     
     if ( inPortOverride != 0)
@@ -482,7 +482,7 @@ Bool16 QTSServer::CreateListeners(Bool16 startListeningNow, QTSServerPrefs* inPr
     
     for (UInt32 count6 = 0; count6 < fNumListeners; count6++)
     {
-        if  (fListeners[count6]->GetLocalAddr() != INADDR_LOOPBACK)
+        if  (!fListeners[count6]->GetLocalAddr().IsAddrLoopback())
         {
             UInt16 thePort = fListeners[count6]->GetLocalPort();
             (void)this->SetValue(qtssSvrRTSPPorts, portIndex, &thePort, sizeof(thePort), QTSSDictionary::kDontObeyReadOnly);
@@ -495,20 +495,22 @@ Bool16 QTSServer::CreateListeners(Bool16 startListeningNow, QTSServerPrefs* inPr
     return (fNumListeners > 0);
 }
 
-UInt32* QTSServer::GetRTSPIPAddrs(QTSServerPrefs* inPrefs, UInt32* outNumAddrsPtr)
+Address* QTSServer::GetRTSPIPAddrs(QTSServerPrefs* inPrefs, UInt32* outNumAddrsPtr)
 {
     UInt32 numAddrs = inPrefs->GetNumValues(qtssPrefsRTSPIPAddr);
-    UInt32* theIPAddrArray = NULL;
+    Address* theIPAddrArray = NULL;
+    UInt32 anyAddresses = Address::CountAnyAddresses();
     
     if (numAddrs == 0)
     {
-        *outNumAddrsPtr = 1;
-        theIPAddrArray = NEW UInt32[1];
-        theIPAddrArray[0] = INADDR_ANY;
+        *outNumAddrsPtr = anyAddresses;
+        theIPAddrArray = NEW Address[anyAddresses];
+        for (UInt32 theIndex = 0; theIndex < anyAddresses; theIndex++)
+            theIPAddrArray[theIndex] = Address::CreateAnyAddress(theIndex);
     }
     else
     {
-        theIPAddrArray = NEW UInt32[numAddrs + 1];
+        theIPAddrArray = NEW Address[numAddrs + anyAddresses + 2];
         UInt32 arrIndex = 0;
         
         for (UInt32 theIndex = 0; theIndex < numAddrs; theIndex++)
@@ -525,21 +527,25 @@ UInt32* QTSServer::GetRTSPIPAddrs(QTSServerPrefs* inPrefs, UInt32* outNumAddrsPt
             }
 
             
-            UInt32 theIPAddr = 0;
+            Address theIPAddr;
             if (theIPAddrStr != NULL)
             {
                 theIPAddr = SocketUtils::ConvertStringToAddr(theIPAddrStr);
                 delete [] theIPAddrStr;
                 
-                if (theIPAddr != 0)
+                if (!theIPAddr.IsAddrEmpty())
                     theIPAddrArray[arrIndex++] = theIPAddr;
             }   
         }
         
-        if ((numAddrs == 1) && (arrIndex == 0))
-            theIPAddrArray[arrIndex++] = INADDR_ANY;
-        else
-            theIPAddrArray[arrIndex++] = INADDR_LOOPBACK;
+        if ((numAddrs == 1) && (arrIndex == 0)) {
+            for (UInt32 theIndex = 0; theIndex < anyAddresses; theIndex++)
+                theIPAddrArray[arrIndex++] = Address::CreateAnyAddress(theIndex);
+        } else {
+            if (Address::IsFamilySupported(AF_INET6))
+                theIPAddrArray[arrIndex++].SetLoopback(AF_INET6);
+            theIPAddrArray[arrIndex++].SetLoopback(AF_INET);
+        }
     
         *outNumAddrsPtr = arrIndex;
     }

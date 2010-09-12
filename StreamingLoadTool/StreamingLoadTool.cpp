@@ -99,11 +99,11 @@ int main(int argc, char *argv[]);
 //
 // Helper functions
 char* 	GetClientTypeDescription(ClientSession::ClientType inClientType);
-void	DoDNSLookup(SVector<char *> &theURLlist, SVector<UInt32> &ioIPAddrs);
+void	DoDNSLookup(SVector<char *> &theURLlist, SVector<Address> &ioIPAddrs);
 void 	RecordClientInfoBeforeDeath(ClientSession* inSession);
 char*	GetDeathReasonDescription(UInt32 inDeathReason);
 char*	GetPayloadDescription(QTSS_RTPPayloadType inPayload);
-void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<char *> &theURLlist, UInt16 inPort, SVector<char *> &userList, SVector<char *> &passwordList, UInt32 verboseLevel);
+void	CheckForStreamingLoadToolDotMov(SVector<Address> &ioIPAddrArray, SVector<char *> &theURLlist, UInt16 inPort, SVector<char *> &userList, SVector<char *> &passwordList, UInt32 verboseLevel);
 UInt32 CalcStartTime(Bool16 inRandomThumb, UInt32 inMovieLength);
 extern char* optarg;
 
@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	UInt32 theHTTPCookie = 1;
 	Bool16 shouldLog = false;
 	char* logPath = "streamingloadtool.log";
-	UInt32 proxyIP = 0;
+	Address proxyIP;
 	Bool16 appendJunk = false;
 	UInt32 theReadInterval = 50;
 	UInt32 sockRcvBuf = 32768;
@@ -549,8 +549,8 @@ int main(int argc, char *argv[])
 		theClientType = ClientSession::kRTSPHTTPDropPostClientType;
 		
 	// Do IP lookups on all the URLs
-    SVector<UInt32> theIPAddrArray;
-    theIPAddrArray.resize(theURLlist.size(), 0);
+    SVector<Address> theIPAddrArray;
+    theIPAddrArray.resize(theURLlist.size(), Address());
 	::DoDNSLookup(theURLlist, theIPAddrArray);
 
 
@@ -572,7 +572,7 @@ int main(int argc, char *argv[])
 	::CheckForStreamingLoadToolDotMov(theIPAddrArray, theURLlist, thePort, userList, passwordList, verboseLevel);
 
 	// If user specified a proxy to connect through, use that IP address, not the IP address in the URL.
-	if (proxyIP != 0)
+	if (!proxyIP.IsAddrEmpty())
 	{
 		for (UInt32 ipAddrCounter = 0; ipAddrCounter < theURLlist.size(); ipAddrCounter++)
 			theIPAddrArray[ipAddrCounter] = proxyIP;
@@ -588,7 +588,7 @@ int main(int argc, char *argv[])
 	UInt32 theCurUserIndex = 0;
 	for (UInt32 clientCount = 0; clientCount < sNumClients; clientCount++, theCurURLIndex = (theCurURLIndex + 1) % theURLlist.size(), theCurUserIndex++)
 	{
-		while(theIPAddrArray[theCurURLIndex] == 0)
+		while(theIPAddrArray[theCurURLIndex].IsAddrEmpty())
 			theCurURLIndex = (theCurURLIndex + 1) % theURLlist.size();
 		if (theCurUserIndex == userList.size())
 			theCurUserIndex = 0;
@@ -662,7 +662,7 @@ int main(int argc, char *argv[])
 
 			if ( (sClientSessionArray[y] != NULL && sClientSessionArray[y]->IsDone()) )
 			{
-				while(theIPAddrArray[theCurURLIndex] == 0)
+				while(theIPAddrArray[theCurURLIndex].IsAddrEmpty())
 					theCurURLIndex = (theCurURLIndex + 1) % theURLlist.size();
 				if (theCurUserIndex == userList.size())
 					theCurUserIndex = 0;
@@ -873,7 +873,7 @@ void CheckForStreamingLoadToolPermission(UInt32* inIPAddrArray, UInt32 inNumURLs
 }
 
 //Currently will only authenticate with the FIRST username/password if provided
-void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<char *> &theURLlist, UInt16 inPort, SVector<char *> &userList, SVector<char *> &passwordList, UInt32 verboseLevel)
+void	CheckForStreamingLoadToolDotMov(SVector<Address> &ioIPAddrArray, SVector<char *> &theURLlist, UInt16 inPort, SVector<char *> &userList, SVector<char *> &passwordList, UInt32 verboseLevel)
 {
     Assert(ioIPAddrArray.size() == theURLlist.size());
 	printf("Checking for 'streamingloadtool.mov' on the target servers\n");
@@ -885,7 +885,7 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 
 	for (UInt32 count = 0; count < theURLlist.size(); count++)
 	{
-		if (ioIPAddrArray[count] == 0) //skip over one's that failed DNS
+		if (ioIPAddrArray[count].IsAddrEmpty()) //skip over one's that failed DNS
 			continue;
 		
 		//check for duplicates
@@ -910,10 +910,7 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 		// Format the URL: rtsp://xx.xx.xx.xx/streamingloadtool.mov
 		char theAddrBuf[50];
 		StrPtrLen theAddrBufPtr(theAddrBuf, 50);
-		struct in_addr theAddr;
-		theAddr.s_addr = htonl(ioIPAddrArray[count]);
-		
-		SocketUtils::ConvertAddrToString(theAddr, &theAddrBufPtr);
+		ioIPAddrArray[count].GetNumericString(&theAddrBufPtr);
 
 		char theURLBuf[100];
 		StringFormatter theFormatter(theURLBuf, 100);
@@ -926,7 +923,7 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 		StrPtrLenDel theURL(theFormatter.GetAsCString());
 		
 		// Make an RTSP client. We'll send a DESCRIBE to the server to check for this sucker
-		TCPClientSocket theSocket = TCPClientSocket(0); //blocking
+		TCPClientSocket theSocket = TCPClientSocket(0, ioIPAddrArray[count].GetFamily()); //blocking
 
 		// tell the client this is the URL to use
 		theSocket.Set(ioIPAddrArray[count], inPort);
@@ -950,14 +947,14 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 		if (theErr != OS_NoErr)
 		{
 			printf("##WARNING: Error connecting to %s.\n\n", theURLlist[count]);
-			ioIPAddrArray[count] = 0;
+			ioIPAddrArray[count] = Address();
 			continue;
 		}
 		
 		if (theClient.GetStatus() != 200)
 		{
 			printf("##WARNING: Cannot access %s\n\n", theURL.Ptr);
-			ioIPAddrArray[count] = 0;
+			ioIPAddrArray[count] = Address();
 		}
 		theClient.SendTeardown();
 	}
@@ -965,7 +962,7 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 	int addrCount = 0;
 	for (UInt32 x = 0; x < theURLlist.size(); x++)
 	{
-		if ( 0 != ioIPAddrArray[x])
+		if (!ioIPAddrArray[x].IsAddrEmpty())
 			addrCount++ ;
 	}
 	if (addrCount == 0)
@@ -976,7 +973,7 @@ void	CheckForStreamingLoadToolDotMov(SVector<UInt32> &ioIPAddrArray, SVector<cha
 }
 
 
-void	DoDNSLookup(SVector<char *> &theURLlist, SVector<UInt32> &ioIPAddrs)
+void	DoDNSLookup(SVector<char *> &theURLlist, SVector<Address> &ioIPAddrs)
 {
     Assert(theURLlist.size() == ioIPAddrs.size());
     enum { eDNSNameSize = 128 };
@@ -990,9 +987,14 @@ void	DoDNSLookup(SVector<char *> &theURLlist, SVector<UInt32> &ioIPAddrs)
 		StrPtrLen theDNSNamePtr;
 		
 		theURLParser.ConsumeLength(NULL, 7); // skip over rtsp://
-		theURLParser.ConsumeUntil(&theDNSNamePtr, '/'); // grab the DNS name
-		StringParser theDNSParser(&theDNSNamePtr);
-		theDNSParser.ConsumeUntil(&theDNSNamePtr, ':'); // strip off the port number if any
+		if (theURLParser.PeekFast() == '[') {
+			theURLParser.Expect('[');
+			theURLParser.ConsumeUntil(&theDNSNamePtr, ']'); // grab the DNS name
+		} else {
+			theURLParser.ConsumeUntil(&theDNSNamePtr, '/'); // grab the DNS name
+			StringParser theDNSParser(&theDNSNamePtr);
+			theDNSParser.ConsumeUntil(&theDNSNamePtr, ':'); // strip off the port number if any
+		}
 		
 			
         if (theDNSNamePtr.Len > eDNSNameSize)
@@ -1007,17 +1009,10 @@ void	DoDNSLookup(SVector<char *> &theURLlist, SVector<UInt32> &ioIPAddrs)
 		theDNSName[theDNSNamePtr.Len] = 0;
 		
 		
-		ioIPAddrs[x] = 0;
-		
 		// Now pass that DNS name into gethostbyname.
-		struct hostent* theHostent = ::gethostbyname(theDNSName);
+		ioIPAddrs[x] = Address::ConvertStringToAddress(theDNSName);
 		
-		if (theHostent != NULL)
-			ioIPAddrs[x] = ntohl(*(UInt32*)(theHostent->h_addr_list[0]));
-		else
-			ioIPAddrs[x] = SocketUtils::ConvertStringToAddr(theDNSName);
-		
-		if (ioIPAddrs[x] == 0)
+		if (ioIPAddrs[x].IsAddrEmpty())
 		{
 			printf("Couldn't look up host name: %s.\n", theDNSName);
 			//exit(-1);
@@ -1114,9 +1109,8 @@ void RecordClientInfoBeforeDeath(ClientSession* inSession)
 	
 	{
 		UInt32 theReason = inSession->GetReasonForDying();
-		in_addr theAddr;
-		theAddr.s_addr = htonl(inSession->GetSocket()->GetHostAddr());
-		char* theAddrStr = ::inet_ntoa(theAddr);
+		char addrbuf[ADDRSTRLEN];
+		char* theAddrStr = inSession->GetSocket()->GetHostAddr().ToNumericString(addrbuf);
 		
 		//
 		// Write a log entry for this client

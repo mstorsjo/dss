@@ -107,7 +107,7 @@ private:
     void    ParseRangeHeader();
     void    ParseTransportHeader();
     void    ParseIfModSinceHeader();
-    void    ParseAddrSubHeader(StrPtrLen* inSubHeader, StrPtrLen* inHeaderName, UInt32* outAddr);
+    void    ParseAddrSubHeader(StrPtrLen* inSubHeader, StrPtrLen* inHeaderName, Address* outAddr);
     void    ParseRetransmitHeader();
     void    ParseContentLengthHeader();
     void    ParseSpeedHeader();

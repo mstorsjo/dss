@@ -147,8 +147,8 @@ class RTSPRequestInterface : public QTSSDictionary
         // these get set if there is a transport header
         UInt16                      GetClientPortA()    { return fClientPortA; }
         UInt16                      GetClientPortB()    { return fClientPortB; }
-        UInt32                      GetDestAddr()       { return fDestinationAddr; }
-        UInt32                      GetSourceAddr()     { return fSourceAddr; }
+        Address                     GetDestAddr()       { return fDestinationAddr; }
+        Address                     GetSourceAddr()     { return fSourceAddr; }
         UInt16                      GetTtl()            { return fTtl; }
         QTSS_RTPTransportType       GetTransportType()  { return fTransportType; }
         QTSS_RTPNetworkMode         GetNetworkMode()    { return fNetworkMode; }
@@ -230,8 +230,8 @@ class RTSPRequestInterface : public QTSSDictionary
         UInt16                      fClientPortA;       //This is all info that comes out
         UInt16                      fClientPortB;       //of the Transport: header
         UInt16                      fTtl;
-        UInt32                      fDestinationAddr;
-        UInt32                      fSourceAddr;
+        Address                     fDestinationAddr;
+        Address                     fSourceAddr;
         QTSS_RTPTransportType       fTransportType;
         QTSS_RTPNetworkMode         fNetworkMode;
     

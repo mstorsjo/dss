@@ -79,8 +79,8 @@ void RCFSourceInfo::Parse(XMLTag* relayTag)
         return;
     
     fNumStreams = 0;
-    UInt32 destIPAddr = 0;
-    UInt32 srcIPAddr = 0;
+    Address destIPAddr;
+    Address srcIPAddr;
     UInt16 ttl = 0;
     
     XMLTag* prefTag;

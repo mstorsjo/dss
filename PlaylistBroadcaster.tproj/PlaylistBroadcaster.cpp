@@ -369,7 +369,7 @@ BroadcasterSession *StartBroadcastRTSPSession(PLBroadcastDef *broadcastParms)
     TimeoutTask::Initialize();
     Socket::StartThread();
 
-    UInt32 inAddr = SocketUtils::ConvertStringToAddr(broadcastParms->mDestAddress);
+    Address inAddr = SocketUtils::ConvertStringToAddr(broadcastParms->mDestAddress);
     
     UInt16 inPort = atoi(broadcastParms->mRTSPPort);
     char * theURL = new char[512];
@@ -419,7 +419,7 @@ Bool16 AnnounceBroadcast(PLBroadcastDef *broadcastParms,QTFileBroadcaster   *fil
 
 	// if the address is a multicast address then we can't announce the broadcast.
     
-    if(SocketUtils::IsMulticastIPAddr(ntohl(inet_addr(broadcastParms->mDestAddress)))) {
+    if(SocketUtils::IsMulticastIPAddr(SocketUtils::ConvertStringToAddr(broadcastParms->mDestAddress))) {
         sAnnounceBroadcast = false;
         return true;
     }
@@ -1619,7 +1619,7 @@ static int PreflightDestinationAddress( const char *destAddress )
     int     numPreflightErrors = 0;
 
 
-    if ( !destAddress || (SocketUtils::ConvertStringToAddr(destAddress) == INADDR_NONE) )
+    if ( !destAddress || (SocketUtils::ConvertStringToAddr(destAddress).IsAddrEmpty()) )
     {   qtss_printf("- PlaylistBroadcaster: Error, desitination_ip_address parameter missing or incorrect in the Broadcaster description file.\n" );
         numPreflightErrors++;
     }

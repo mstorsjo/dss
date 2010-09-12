@@ -36,6 +36,7 @@
 #include "OSMutex.h"
 #include "QTSSModuleUtils.h"
 #include "OSMemory.h"
+#include "Address.h"
 
 static QTSS_ModulePrefsObject sPrefs = NULL;
 static QTSS_StreamRef           sErrorLogStream = NULL;
@@ -46,7 +47,7 @@ class IPAddrTableElem
 {
     public:
 
-        IPAddrTableElem(UInt32 inIPAddr) : fIPAddr(inIPAddr), fRefCount(0), fNextHashEntry(NULL) {}
+        IPAddrTableElem(Address inIPAddr) : fIPAddr(inIPAddr), fRefCount(0), fNextHashEntry(NULL) {}
         ~IPAddrTableElem() {}
         
         UInt32 GetRefCount() { return fRefCount; }
@@ -54,7 +55,7 @@ class IPAddrTableElem
         void    DecrementRefCount() { fRefCount--; }
     private:
         
-        UInt32              fIPAddr;// this also serves as the hash value
+        Address             fIPAddr;// this also serves as the hash value
         UInt32              fRefCount;
                 
         IPAddrTableElem*    fNextHashEntry;
@@ -69,14 +70,14 @@ class IPAddrTableKey
 public:
 
     //CONSTRUCTOR / DESTRUCTOR:
-    IPAddrTableKey(UInt32 inIPAddr) : fIPAddr(inIPAddr) {}
+    IPAddrTableKey(Address inIPAddr) : fIPAddr(inIPAddr) {}
     ~IPAddrTableKey() {}
     
     
 private:
 
     //PRIVATE ACCESSORS:    
-    SInt32      GetHashKey()        { return fIPAddr; }
+    SInt32      GetHashKey()        { return fIPAddr.GetHashValue(); }
 
     //these functions are only used by the hash table itself. This constructor
     //will break the "Set" functions.
@@ -88,7 +89,7 @@ private:
     }
     
     //data:
-    UInt32  fIPAddr;
+    Address  fIPAddr;
 
     friend class OSHashTable<IPAddrTableElem, IPAddrTableKey>;
 };
@@ -193,7 +194,7 @@ QTSS_Error Authorize(QTSS_StandardRTSP_Params* inParams)
     static Bool16 sTrue = true;
     
     Bool16* isFirstRequest = NULL;
-    UInt32* theIPAddr = NULL;
+    Address* theIPAddr = NULL;
     UInt32 theLen = 0;
     
     // Only do anything if this is the first request
@@ -203,7 +204,7 @@ QTSS_Error Authorize(QTSS_StandardRTSP_Params* inParams)
         
     // Get the IP address of this client.
     (void)QTSS_GetValuePtr(inParams->inRTSPSession, qtssRTSPSesRemoteAddr, 0, (void**)&theIPAddr, &theLen);
-    if ((theIPAddr == NULL) || (theLen != sizeof(UInt32)))
+    if ((theIPAddr == NULL) || (theLen != sizeof(Address)))
     {
         return QTSS_NoErr;
     }
@@ -243,7 +244,7 @@ QTSS_Error Authorize(QTSS_StandardRTSP_Params* inParams)
 
 QTSS_Error SessionClosing(QTSS_RTSPSession_Params* inParams)
 {
-    UInt32* theIPAddr = NULL;
+    Address* theIPAddr = NULL;
     Bool16* isFirstRequest = NULL;
     UInt32 theLen = 0;
     
@@ -254,7 +255,7 @@ QTSS_Error SessionClosing(QTSS_RTSPSession_Params* inParams)
         
     // Get the IP address of this client.
     (void)QTSS_GetValuePtr(inParams->inRTSPSession, qtssRTSPSesRemoteAddr, 0, (void**)&theIPAddr, &theLen);
-    if ((theIPAddr == NULL) || (theLen != sizeof(UInt32)))
+    if ((theIPAddr == NULL) || (theLen != sizeof(Address)))
     {
         return QTSS_NoErr;
     }

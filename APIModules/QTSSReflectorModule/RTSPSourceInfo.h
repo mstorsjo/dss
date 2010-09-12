@@ -79,9 +79,7 @@ class RTSPSourceInfo : public RCFSourceInfo
     
         // Specify whether the client should be blocking or non-blocking
         RTSPSourceInfo(Bool16 inAnnounce) : fSourceURL(NULL),
-                                            fHostAddr(0),
                                             fHostPort(0),
-                                            fLocalAddr(0),
                                             fUserName(NULL),
                                             fPassword(NULL),
                                             fRTSPInfoArray(NULL),
@@ -91,8 +89,6 @@ class RTSPSourceInfo : public RCFSourceInfo
                                             fDescribeComplete(false),
                                             fAnnounce(inAnnounce),
                                             fAnnounceURL(NULL),
-                                            fAnnounceIP(0),
-                                            fAnnounceActualIP(0),
                                             fRelaySessionCreatorTask(NULL),  
                                             fSession(NULL), 
                                             fSessionQueue(NULL),
@@ -104,9 +100,9 @@ class RTSPSourceInfo : public RCFSourceInfo
         virtual ~RTSPSourceInfo();
         
         // Call this before calling ParsePrefs / Describe
-        void InitClient(UInt32 inSocketType);
+        void InitClient(UInt32 inSocketType, int family);
         
-        void SetClientInfo(UInt32 inAddr, UInt16 inPort, char* inURL, UInt32 inLocalAddr = 0);
+        void SetClientInfo(Address inAddr, UInt16 inPort, char* inURL, Address inLocalAddr = Address());
         
         // Call this immediately after the constructor. This object will parse
         // the config file and extract the necessary information to connect to an rtsp server.
@@ -135,7 +131,7 @@ class RTSPSourceInfo : public RCFSourceInfo
         // This function uses the Parsed SDP file, and strips out all the network information,
         // producing an SDP file that appears to be local.
         virtual char*   GetLocalSDP(UInt32* newSDPLen);
-        virtual char*   GetAnnounceSDP(UInt32 ipAddr, UInt32* newSDPLen);
+        virtual char*   GetAnnounceSDP(Address ipAddr, UInt32* newSDPLen);
         virtual StrPtrLen*  GetSourceID() { return fClient->GetURL(); }
         
         // This object looks for this keyword in the FilePrefsSource, where it
@@ -156,12 +152,12 @@ class RTSPSourceInfo : public RCFSourceInfo
         Bool16 IsAnnounce() { return fAnnounce; }
         
         char* GetAnnounceURL() { return fAnnounceURL; }
-        UInt32 GetAnnounceIP() { return fAnnounceIP; }
+        Address GetAnnounceIP() { return fAnnounceIP; }
         
-        UInt32 GetAnnounceActualIP() { return fAnnounceActualIP; }
-        void   SetAnnounceActualIP(UInt32 inActualIP) { fAnnounceActualIP = inActualIP; }
+        Address GetAnnounceActualIP() { return fAnnounceActualIP; }
+        void   SetAnnounceActualIP(Address inActualIP) { fAnnounceActualIP = inActualIP; }
         
-        UInt32 GetHostAddr() { return fHostAddr; }
+        Address GetHostAddr() { return fHostAddr; }
         UInt32 GetHostPort() { return fHostPort; }
         
         char* GetUsername() { return fUserName; }
@@ -169,7 +165,7 @@ class RTSPSourceInfo : public RCFSourceInfo
         
         RelaySession* GetRelaySession() { return fSession; }
         
-        void SetSourceParameters(UInt32 inHostAddr, UInt16 inHostPort, StrPtrLen& inURL); 
+        void SetSourceParameters(Address inHostAddr, UInt16 inHostPort, StrPtrLen& inURL);
         
         void StartSessionCreatorTask(OSQueue* inSessionQueue, OSQueue* inSourceQueue);
         
@@ -204,9 +200,9 @@ class RTSPSourceInfo : public RCFSourceInfo
         };
         
         char*                   fSourceURL;
-        UInt32                  fHostAddr;
+        Address                 fHostAddr;
         UInt16                  fHostPort;
-        UInt32                  fLocalAddr;
+        Address                 fLocalAddr;
         char*                   fUserName;
         char*                   fPassword;
         RTSPOutputInfo*         fRTSPInfoArray;
@@ -218,8 +214,8 @@ class RTSPSourceInfo : public RCFSourceInfo
         
         Bool16                  fAnnounce;
         char*                   fAnnounceURL;
-        UInt32                  fAnnounceIP;
-        UInt32                  fAnnounceActualIP;
+        Address                 fAnnounceIP;
+        Address                 fAnnounceActualIP;
         RelaySessionCreator*    fRelaySessionCreatorTask;
         
         enum    // relay session creation states

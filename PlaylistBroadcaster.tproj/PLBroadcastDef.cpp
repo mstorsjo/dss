@@ -466,24 +466,19 @@ void PLBroadcastDef::ValidateSettings()
 {
 
     // For now it just validates the destination ip address
-    UInt32 inAddr = 0;
+    Address inAddr;
     inAddr = SocketUtils::ConvertStringToAddr(mDestAddress);
-    if(inAddr == INADDR_NONE)
+    if(inAddr.IsAddrEmpty())
     {
-        struct hostent* theHostent = ::gethostbyname(mDestAddress);     
-        if (theHostent != NULL)
+        inAddr = Address::ConvertStringToAddress(mDestAddress);
+        if (!inAddr.IsAddrEmpty())
         {
-            inAddr = ntohl(*(UInt32*)(theHostent->h_addr_list[0]));
-            
-            struct in_addr inAddrStruct;
             char buffer[50];
-            StrPtrLen temp(buffer);
-            inAddrStruct.s_addr = *(UInt32*)(theHostent->h_addr_list[0]);
-            SocketUtils::ConvertAddrToString(inAddrStruct, &temp);
+            inAddr.ToNumericString(buffer);
             SetValue( &mDestAddress, buffer );
         }
     }
-    if(inAddr == INADDR_NONE)
+    if(inAddr.IsAddrEmpty())
         mInvalidParamFlags |= kInvalidDestAddress;
 
     // If mInvalidParamFlags is set, set mParamsAreValid to false

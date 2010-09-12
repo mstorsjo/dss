@@ -49,6 +49,7 @@
 #include "Task.h"
 #include "TCPListenerSocket.h"
 #include "ResizeableStringFormatter.h"
+#include "Address.h"
 
 // OSRefTable;
 class UDPSocketPool;
@@ -283,7 +284,7 @@ class QTSServerInterface : public QTSSDictionary
         QTSSMessages*				fStubSrvrMessages;
 
         QTSS_ServerState            fServerState;
-        UInt32                      fDefaultIPAddr;
+        Address                     fDefaultIPAddr;
         
         // Array of pointers to TCPListenerSockets.
         TCPListenerSocket**         fListeners;

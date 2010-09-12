@@ -868,18 +868,16 @@ bool MP3Broadcaster::FileCreateAndCheckAccess(char *theFileName)
 
 int MP3Broadcaster::ConnectToServer()
 {
-    UInt32 addr;
+    Address addr;
     addr = SocketUtils::ConvertStringToAddr(mIPAddr);
-    if (addr == INADDR_NONE)
+    if (addr.IsAddrEmpty())
     {
-        struct hostent* theHostent = ::gethostbyname(mIPAddr);      
-        if (theHostent != NULL)
-            addr = ntohl(*(UInt32*)(theHostent->h_addr_list[0]));
-        else
+        addr = Address::ConvertStringToAddress(mIPAddr);
+        if (addr.IsAddrEmpty())
             qtss_printf("Couldn't resolve address %s\n", mIPAddr);
     }
         
-    OS_Error err = mSocket.Open();
+    OS_Error err = mSocket.Open(addr.GetFamily());
     err = mSocket.Connect(addr, mPort);
         
     if (err == 0)

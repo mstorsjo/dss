@@ -137,10 +137,11 @@ char *SDPGen::Process(  char *sdpFileName,
             UInt32 sessIDAsRandomTime = RandomTime();
             UInt32 versAsRandomTime = RandomTime();
             char  ownerLine[255];
+            char  sdpinline[SDPLINEBUFSIZE];
 
             Assert(SocketUtils::GetIPAddrStr(0) != NULL);
             Assert(SocketUtils::GetIPAddrStr(0)->Ptr != NULL);
-            qtss_sprintf(ownerLine, "o=%s %"_U32BITARG_" %"_U32BITARG_" IN IP4 %s\r\n",userName ,sessIDAsRandomTime,versAsRandomTime,SocketUtils::GetIPAddrStr(0)->Ptr);
+            qtss_sprintf(ownerLine, "o=%s %"_U32BITARG_" %"_U32BITARG_" %s\r\n",userName ,sessIDAsRandomTime,versAsRandomTime,SocketUtils::GetIPAddr(0).GetSDPINLine(sdpinline));
             currentPos = AddToBuff(fSDPFileContentsBuf, currentPos, ownerLine);
             if (currentPos < 0) break;
         }
@@ -162,10 +163,10 @@ char *SDPGen::Process(  char *sdpFileName,
         //    c=IN IP4 (destinatin ip address)
         {   
             char  sdpLine[255];
-            if (SocketUtils::IsMulticastIPAddr(ntohl(inet_addr(ipAddress))))
-                qtss_sprintf(sdpLine, "c=IN IP4 %s/%s\r\n", ipAddress,ttl);
-            else
-                 qtss_sprintf(sdpLine, "c=IN IP4 %s\r\n", ipAddress);
+            Address addr = Address::ConvertStringToAddress(ipAddress);
+            addr.SetTTL(atoi(ttl));
+            addr.GetSDPCLine(sdpLine);
+            strcat(sdpLine, "\r\n");
            currentPos = AddToBuff(fSDPFileContentsBuf, currentPos, sdpLine);
             if (currentPos < 0) break;
         }

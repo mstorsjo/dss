@@ -45,6 +45,7 @@
 #include "MyAssert.h"
 #include "StrPtrLen.h"
 #include "OSMutex.h"
+#include "Address.h"
 
 #ifdef __solaris__
     #ifndef INADDR_NONE
@@ -62,19 +63,15 @@ class SocketUtils
         static void Initialize(Bool16 lookupDNSName = true);
         
         //static utility routines
-        static Bool16   IsMulticastIPAddr(UInt32 inAddress);
-        static Bool16   IsLocalIPAddr(UInt32 inAddress);
+        static Bool16   IsMulticastIPAddr(Address inAddress);
+        static Bool16   IsLocalIPAddr(Address inAddress);
 
-        //This function converts an integer IP address to a dotted-decimal string.
-        //This function is NOT THREAD SAFE!!!
-        static void ConvertAddrToString(const struct in_addr& theAddr, StrPtrLen* outAddr);
-        
         // This function converts a dotted-decimal string IP address to a UInt32
-        static UInt32 ConvertStringToAddr(const char* inAddr);
+        static Address ConvertStringToAddr(const char* inAddr);
         
         //You can get at all the IP addrs and DNS names on this machine this way
         static UInt32       GetNumIPAddrs() { return sNumIPAddrs; }
-        static inline UInt32        GetIPAddr(UInt32 inAddrIndex);
+        static inline Address       GetIPAddr(UInt32 inAddrIndex);
         static inline StrPtrLen*    GetIPAddrStr(UInt32 inAddrIndex);
         static inline StrPtrLen*    GetDNSNameStr(UInt32 inDNSIndex);
             
@@ -87,7 +84,7 @@ class SocketUtils
         //For storing relevent information about each IP interface
         struct IPAddrInfo
         {
-            UInt32      fIPAddr;
+            Address     fIPAddr;
             StrPtrLen   fIPAddrStr;
             StrPtrLen   fDNSNameStr;
         };
@@ -97,7 +94,7 @@ class SocketUtils
         static OSMutex                  sMutex;
 };
 
-inline UInt32   SocketUtils::GetIPAddr(UInt32 inAddrIndex)
+inline Address   SocketUtils::GetIPAddr(UInt32 inAddrIndex)
 {
     Assert(sIPAddrInfoArray != NULL);
     Assert(inAddrIndex < sNumIPAddrs);

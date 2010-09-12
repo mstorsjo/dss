@@ -41,6 +41,7 @@
 #include "ev.h"
 #include "QTFile.h"
 #include "QTSSModuleUtils.h"
+#include "Address.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -210,23 +211,15 @@ QTSS_Error SendTheResponse(QTSS_RTSPSessionObject theSession, QTSS_StreamRef str
     char tmp2[80];
     tmp2[sizeof(tmp2) -1] = 0;
     
-    UInt8 x1, x2, x3, x4;
-
     // send the HTTP reply header to the client
     err= QTSS_Write(stream, sResponseHeader, ::strlen(sResponseHeader), NULL, qtssWriteFlagsBufferData);
     if (err != QTSS_NoErr)
         return QTSS_NoErr;
    
-    UInt32 ip4address = 0;
-    UInt32 len = sizeof(ip4address);
-    err = QTSS_GetValue(theSession, qtssRTSPSesLocalAddr, 0, &ip4address, &len);
+    Address ipaddress;
+    UInt32 len = sizeof(ipaddress);
+    err = QTSS_GetValue(theSession, qtssRTSPSesLocalAddr, 0, &ipaddress, &len);
         
-	// Format the server IP address for building the RTSP address in the reply.
-    x1 = (UInt8)((ip4address >> 24) & 0xff);
-    x2 = (UInt8)((ip4address >> 16) & 0xff);
-    x3 = (UInt8)((ip4address >> 8) & 0xff);
-    x4 = (UInt8)((ip4address) & 0xff);
-    
     if (movie.Len > sizeof(theMovieFile)  -1 )
         movie.Len = sizeof(theMovieFile) -1;
         
@@ -241,7 +234,8 @@ QTSS_Error SendTheResponse(QTSS_RTSPSessionObject theSession, QTSS_StreamRef str
     }
             
 	// construct the RTSP address reply string for the client.
-	qtss_snprintf(tmp,sizeof(tmp) -1, "rtsptext\r\nrtsp://%d.%d.%d.%d:%d%s\r\n", x1,x2,x3,x4, port, theMovieFile);
+	char addrbuf[ADDRSTRLEN];
+	qtss_snprintf(tmp,sizeof(tmp) -1, "rtsptext\r\nrtsp://%s:%d%s\r\n", ipaddress.ToNumericString(addrbuf, sizeof(addrbuf), true), port, theMovieFile);
     
     // send the 'Content-Length:' part of the HTTP reply
     qtss_snprintf(tmp2, sizeof(tmp2) -1, "Content-Length: %d\r\n\r\n", (int) ::strlen(tmp));

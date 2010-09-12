@@ -1067,6 +1067,7 @@ QTSS_Error QTSSModuleUtils::AuthorizeRequest(QTSS_RTSPRequestObject theRTSPReque
 
 
 IPComponentStr IPComponentStr::sLocalIPCompStr("127.0.0.*");
+IPComponentStr IPComponentStr::sLocalIPCompStrV6("::1");
 
 IPComponentStr::IPComponentStr(char *theAddressPtr)
 {
@@ -1086,21 +1087,55 @@ Bool16 IPComponentStr::Set(StrPtrLen *theAddressStrPtr)
     StringParser IP_Paser(theAddressStrPtr);
     StrPtrLen *piecePtr = &fAddressComponent[0];
 
-    while (IP_Paser.GetDataRemaining() > 0) 
-    {
-        IP_Paser.ConsumeUntil(piecePtr,'.');    
-        if (piecePtr->Len == 0) 
-            break;
-        
-        IP_Paser.ConsumeLength(NULL, 1);
-        if (piecePtr == &fAddressComponent[IPComponentStr::kNumComponents -1])
+    if (theAddressStrPtr->FindString(":")) {
+        fFamily = AF_INET6;
+        StrPtrLen *fillZeroStart = NULL;
+        while (IP_Paser.GetDataRemaining() > 0)
         {
-           fIsValid = true;
-           break;
+            IP_Paser.ConsumeUntil(piecePtr,':');
+            if (piecePtr->Len == 0 && piecePtr > &fAddressComponent[0] && !fillZeroStart)
+                fillZeroStart = piecePtr;
+            while (piecePtr->Len > 0 && *piecePtr->Ptr == '0') {
+                piecePtr->Ptr++;
+                piecePtr->Len--;
+            }
+
+            IP_Paser.ConsumeLength(NULL, 1);
+            if (piecePtr == &fAddressComponent[IPComponentStr::kNumComponentsV6 - 1]) {
+               fIsValid = true;
+               break;
+            }
+            piecePtr++;
+        };
+        if (!fIsValid && fillZeroStart) {
+            piecePtr--;
+            StrPtrLen *endPtr = &fAddressComponent[IPComponentStr::kNumComponentsV6 - 1];
+            while (piecePtr > fillZeroStart)
+                *endPtr-- = *piecePtr--;
+            while (endPtr >= fillZeroStart) {
+                endPtr->Len = 0;
+                endPtr--;
+            }
+            fIsValid = true;
         }
+    } else {
+        fFamily = AF_INET;
+        while (IP_Paser.GetDataRemaining() > 0)
+        {
+            IP_Paser.ConsumeUntil(piecePtr,'.');
+            if (piecePtr->Len == 0)
+                break;
+
+            IP_Paser.ConsumeLength(NULL, 1);
+            if (piecePtr == &fAddressComponent[IPComponentStr::kNumComponentsV4 -1])
+            {
+               fIsValid = true;
+               break;
+            }
         
-        piecePtr++;
-    };
+            piecePtr++;
+        };
+    }
      
     return fIsValid;
 }
@@ -1114,7 +1149,13 @@ Bool16 IPComponentStr::Equal(IPComponentStr *testAddressPtr)
     if ( !this->Valid() || !testAddressPtr->Valid() )
         return false;
 
-    for (UInt16 component= 0 ; component < IPComponentStr::kNumComponents ; component ++)
+    if (fFamily != testAddressPtr->fFamily)
+        return false;
+
+    UInt16 components = IPComponentStr::kNumComponentsV4;
+    if (fFamily == AF_INET6)
+        components = IPComponentStr::kNumComponentsV6;
+    for (UInt16 component= 0 ; component < components ; component ++)
     {
         StrPtrLen *allowedPtr = this->GetComponent(component);
         StrPtrLen *testPtr = testAddressPtr->GetComponent(component);

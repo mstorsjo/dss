@@ -876,9 +876,13 @@ void DoAnnounceAddRequiredSDPLines(QTSS_StandardRTSP_Params* inParams, Resizeabl
             qtss_snprintf(tempBuff, sizeof(tempBuff) -1, "%"_64BITARG_"d", (SInt64) OS::UnixTime_Secs() + 2208988800LU);
             editedSDP->Put(tempBuff);
 
-            editedSDP->Put(" IN IP4 ");
             (void)QTSS_GetValue(inParams->inClientSession, qtssCliRTSPSessRemoteAddrStr, 0, tempBuff, &buffLen);
-            editedSDP->Put(tempBuff, buffLen);
+            Address addr = Address::ConvertStringToAddress(tempBuff);
+            editedSDP->Put(" IN ");
+            editedSDP->Put((char*) addr.GetSDPINWord());
+            editedSDP->Put(" ");
+            char addrbuf[ADDRSTRLEN];
+            editedSDP->Put(addr.ToNumericString(addrbuf));
 
             editedSDP->PutEOL();
         }
@@ -1318,7 +1322,7 @@ ReflectorSession* FindOrCreateSession(StrPtrLen* inPath, QTSS_StandardRTSP_Param
         for (int x = 0; x < theInfo->GetNumStreams(); x++) {
             SDPSourceInfo::StreamInfo* info = theInfo->GetStreamInfo(x);
             if (!SocketUtils::IsMulticastIPAddr(info->fDestIPAddr) && !SocketUtils::IsLocalIPAddr(info->fDestIPAddr)) {
-                UInt32 addr;
+                Address addr;
                 UInt32 size = sizeof(addr);
                 QTSS_Error err = QTSS_GetValue(inParams->inRTSPSession, qtssRTSPSesLocalAddr, 0, &addr, &size);
                 if (err == QTSS_NoErr)
@@ -2211,7 +2215,7 @@ Bool16 AcceptSession(QTSS_StandardRTSP_Params* inParams)
  	if (QTSSModuleUtils::UserInGroup(QTSSModuleUtils::GetUserProfileObject(theRTSPRequest), sBroadcasterGroup.Ptr, sBroadcasterGroup.Len))
    		return true; // ok we are allowing this broadcaster user
  
-    char remoteAddress[20] = {0};
+    char remoteAddress[ADDRSTRLEN] = {0};
     StrPtrLen theClientIPAddressStr(remoteAddress,sizeof(remoteAddress));
     QTSS_Error err = QTSS_GetValue(inRTSPSession, qtssRTSPSesRemoteAddrStr, 0, (void*)theClientIPAddressStr.Ptr, &theClientIPAddressStr.Len);
     if (err != QTSS_NoErr) 

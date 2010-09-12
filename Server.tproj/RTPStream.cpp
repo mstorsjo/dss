@@ -168,13 +168,10 @@ RTPStream::RTPStream(UInt32 inSSRC, RTPSessionInterface* inSession)
     fDisplayCount(0),
     fSawFirstPacket(false),
     fTracker(NULL),
-    fRemoteAddr(0),
     fRemoteRTPPort(0),
     fRemoteRTCPPort(0),
     fLocalRTPPort(0),
-	fMonitorAddr (0),
 	fMonitorSocket(0),
-	fPlayerToMonitorAddr(0),  
     fLastSenderReportTime(0),
     fPacketCount(0),
     fLastPacketCount(0),
@@ -278,7 +275,7 @@ RTPStream::RTPStream(UInt32 inSSRC, RTPSessionInterface* inSession)
         fMonitorAddr = SocketUtils::ConvertStringToAddr(destIP.Ptr);
         fPlayerToMonitorAddr = SocketUtils::ConvertStringToAddr(srcIP.Ptr);
         
-        fMonitorSocket = ::socket(AF_INET, SOCK_DGRAM, 0);
+        fMonitorSocket = ::socket(fMonitorAddr.GetFamily(), SOCK_DGRAM, 0);
         #ifdef __Win32__
             u_long one = 1;
             (void) ::ioctlsocket(fMonitorSocket, FIONBIO, &one);
@@ -515,7 +512,7 @@ QTSS_Error RTPStream::Setup(RTSPRequestInterface* request, QTSS_AddStreamFlags i
     //same as the RTSP client's IP address, unless an alternate was specified in the
     //transport header.
     fRemoteAddr = request->GetSession()->GetSocket()->GetRemoteAddr();
-    if (request->GetDestAddr() != INADDR_ANY)
+    if (!request->GetDestAddr().IsAddrEmpty())
     {
         // Sending data to other addresses could be used in malicious ways, therefore
         // it is up to the module as to whether this sort of request might be allowed
@@ -540,8 +537,8 @@ QTSS_Error RTPStream::Setup(RTSPRequestInterface* request, QTSS_AddStreamFlags i
     
     // Find the right source address for this stream. If it isn't specified in the
     // RTSP request, assume it is the same interface as for the RTSP request.
-    UInt32 sourceAddr = request->GetSession()->GetSocket()->GetLocalAddr();
-    if ((request->GetSourceAddr() != INADDR_ANY) && (SocketUtils::IsLocalIPAddr(request->GetSourceAddr())))
+    Address sourceAddr = request->GetSession()->GetSocket()->GetLocalAddr();
+    if ((!request->GetSourceAddr().IsAddrAny()) && (SocketUtils::IsLocalIPAddr(request->GetSourceAddr())))
         sourceAddr = request->GetSourceAddr();
 
     // if the transport is TCP or RUDP, then we only want one session quality level instead of a per stream one
@@ -603,14 +600,11 @@ QTSS_Error RTPStream::Setup(RTSPRequestInterface* request, QTSS_AddStreamFlags i
             fResender.SetLog(&logName);
         
             StrPtrLen   *presoURL = fSession->GetValue(qtssCliSesPresentationURL);
-            UInt32      clientAddr = request->GetSession()->GetSocket()->GetRemoteAddr();
+            Address     clientAddr = request->GetSession()->GetSocket()->GetRemoteAddr();
             memcpy( url, presoURL->Ptr, presoURL->Len );
             url[presoURL->Len] = 0;
-            qtss_printf( "RTPStream::Setup for %s will use ACKS, ip addr: %li.%li.%li.%li\n", url, (clientAddr & 0xff000000) >> 24
-                                                                                                 , (clientAddr & 0x00ff0000) >> 16
-                                                                                                 , (clientAddr & 0x0000ff00) >> 8
-                                                                                                 , (clientAddr & 0x000000ff)
-                                                                                                  );
+            char addrbuf[ADDRSTRLEN];
+            qtss_printf( "RTPStream::Setup for %s will use ACKS, ip addr: %s\n", url, clientAddr.ToNumericString(addrbuf));
         }
 #endif
     }
@@ -759,30 +753,28 @@ void RTPStream::UDPMonitorWrite(void* thePacketData, UInt32 inLen,  Bool16 isRTC
     if (FALSE == fUDPMonitorEnabled || 0 == fMonitorSocket || NULL == thePacketData)
         return;
         
-    if ((0 != fPlayerToMonitorAddr) && (this->fRemoteAddr != fPlayerToMonitorAddr))
+    if ((!fPlayerToMonitorAddr.IsAddrEmpty()) && (this->fRemoteAddr != fPlayerToMonitorAddr))
         return;
         
    UInt16 RTCPportOffset = (TRUE == isRTCP)? 1 : 0;
 
 
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(struct sockaddr_in));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = htonl(fMonitorAddr);
+    Address addr = fMonitorAddr;
+    addr.SetPort(0);
     
     if (fPayloadType == qtssVideoPayloadType)
-        sin.sin_port = (in_port_t) htons(fMonitorVideoDestPort+RTCPportOffset);
+        addr.SetPort(fMonitorVideoDestPort+RTCPportOffset);
     else if (fPayloadType == qtssAudioPayloadType)
-        sin.sin_port = (in_port_t) htons(fMonitorAudioDestPort+RTCPportOffset);
+        addr.SetPort(fMonitorAudioDestPort+RTCPportOffset);
     
-    if (sin.sin_port != 0)
+    if (addr.GetPort() != 0)
     {
-        ssize_t result = ::sendto(fMonitorSocket, thePacketData, inLen, 0, (struct sockaddr *)&sin, sizeof(struct sockaddr));
+        ssize_t result = ::sendto(fMonitorSocket, thePacketData, inLen, 0, addr.GetSockAddr(), addr.GetSockLen());
        if (DEBUG)
         {   if (result < 0)
                 qtss_printf("RTCP Monitor Socket sendto failed\n");
             else if (0)
-                qtss_printf("RTCP Monitor Socket sendto port=%hu, packetLen=%"_U32BITARG_"\n", ntohs(sin.sin_port), inLen);
+                qtss_printf("RTCP Monitor Socket sendto port=%hu, packetLen=%"_U32BITARG_"\n", addr.GetPort(), inLen);
         }
     }
 

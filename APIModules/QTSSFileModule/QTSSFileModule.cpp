@@ -96,7 +96,6 @@ static StrPtrLen sSDPSuffix(".sdp");
 static  StrPtrLen sVersionHeader("v=0");
 static  StrPtrLen sSessionNameHeader("s=");
 static  StrPtrLen sPermanentTimeHeader("t=0 0");
-static  StrPtrLen sConnectionHeader("c=IN IP4 0.0.0.0");
 static StrPtrLen  sStaticControlHeader("a=control:*");
 static  StrPtrLen  sEmailHeader;
 static  StrPtrLen  sURLHeader;
@@ -757,8 +756,9 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParamBlock)
         QTSSCharArrayDeleter fileNameStrDeleter(fileNameStr);
         	
         //Get IP addr
-        StrPtrLen ipStr;
-        (void)QTSS_GetValuePtr(inParamBlock->inRTSPSession, qtssRTSPSesLocalAddrStr, 0, (void**)&ipStr.Ptr, &ipStr.Len);
+        Address addr;
+        UInt32 len = sizeof(addr);
+        (void)QTSS_GetValue(inParamBlock->inRTSPSession, qtssRTSPSesLocalAddr, 0, &addr, &len);
 
 
 //      
@@ -773,14 +773,12 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParamBlock)
 
         const SInt16 sLineSize = 256;
         char ownerLine[sLineSize]="";
+        char addrbuf[ADDRSTRLEN];
         ownerLine[sLineSize - 1] = 0;
-        
-        char *ipCstr = ipStr.GetAsCString();
-        OSCharArrayDeleter ipDeleter(ipCstr);
         
         // the first number is the NTP time used for the session identifier (this changes for each request)
         // the second number is the NTP date time of when the file was modified (this changes when the file changes)
-        qtss_sprintf(ownerLine, "o=StreamingServer %"_64BITARG_"d %"_64BITARG_"d IN IP4 %s", (SInt64) OS::UnixTime_Secs() + 2208988800LU, (SInt64) theFile->fFile.GetQTFile()->GetModDate(),ipCstr);
+        qtss_sprintf(ownerLine, "o=StreamingServer %"_64BITARG_"d %"_64BITARG_"d IN %s %s", (SInt64) OS::UnixTime_Secs() + 2208988800LU, (SInt64) theFile->fFile.GetQTFile()->GetModDate(), addr.GetSDPINWord(), addr.ToNumericString(addrbuf));
         Assert(ownerLine[sLineSize - 1] == 0);
 
         StrPtrLen ownerStr(ownerLine);
@@ -806,7 +804,10 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParamBlock)
 
 // -------- connection information header
         
-        theFullSDPBuffer.Put(sConnectionHeader); 
+        char connectionLine[sLineSize] = "";
+        Address::CreateAnyAddressOfFamily(addr.GetFamily()).GetSDPCLine(connectionLine);
+        StrPtrLen connectionStr(connectionLine);
+        theFullSDPBuffer.Put(connectionStr);
         theFullSDPBuffer.Put(sEOL);
 
 // -------- time header

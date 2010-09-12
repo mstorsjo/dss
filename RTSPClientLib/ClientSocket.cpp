@@ -48,22 +48,21 @@
 
 
 ClientSocket::ClientSocket()
-:   fHostAddr(0),
-    fHostPort(0),
+:   fHostPort(0),
     fEventMask(0),
     fSocketP(NULL),
     fSendBuffer(fSendBuf, 0),
     fSentLength(0)
 {}
 
-OS_Error ClientSocket::Open(TCPSocket* inSocket)
+OS_Error ClientSocket::Open(TCPSocket* inSocket, int family)
 {
     OS_Error theErr = OS_NoErr;
     if (!inSocket->IsBound())
     {
-        theErr = inSocket->Open();
+        theErr = inSocket->Open(family);
         if (theErr == OS_NoErr)
-            theErr = inSocket->Bind(0, 0);
+            theErr = inSocket->Bind(Address::CreateAnyAddressOfFamily(family), 0);
 
         if (theErr != OS_NoErr)
             return theErr;
@@ -81,7 +80,7 @@ OS_Error ClientSocket::Open(TCPSocket* inSocket)
 
 OS_Error ClientSocket::Connect(TCPSocket* inSocket)
 {
-    OS_Error theErr = this->Open(inSocket);
+    OS_Error theErr = this->Open(inSocket, fHostAddr.GetFamily());
     Assert(theErr == OS_NoErr);
     if (theErr != OS_NoErr)
         return theErr;
@@ -140,7 +139,7 @@ OS_Error ClientSocket::SendSendBuffer(TCPSocket* inSocket)
 }
 
 
-TCPClientSocket::TCPClientSocket(UInt32 inSocketType)
+TCPClientSocket::TCPClientSocket(UInt32 inSocketType, int family)
  : fSocket(NULL, inSocketType)
 {
     //
@@ -148,7 +147,7 @@ TCPClientSocket::TCPClientSocket(UInt32 inSocketType)
     // object because the QTSSSplitterModule that uses this class uses
     // the socket file descriptor in the QTSS_CreateStreamFromSocket call.
     fSocketP = &fSocket;
-    this->Open(&fSocket);
+    this->Open(&fSocket, family);
 }
 
 void TCPClientSocket::SetOptions(int sndBufSize,int rcvBufSize)

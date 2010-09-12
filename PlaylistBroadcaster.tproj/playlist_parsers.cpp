@@ -389,7 +389,8 @@ bool SDPFileParser::ParseIPString(TextLine *theLinePtr)
     SimpleString *aWordPtr;
     do 
     {        
-        SimpleString ipIDString("IP4"); 
+        SimpleString ip4IDString("IP4");
+        SimpleString ip6IDString("IP6");
         
         aWordPtr = theLinePtr->fWords.Begin();
         if (!aWordPtr) break;
@@ -400,14 +401,20 @@ bool SDPFileParser::ParseIPString(TextLine *theLinePtr)
         aWordPtr = theLinePtr->fWords.SetPos(2);            
         if (!aWordPtr) break;
         
-        isEqual = Compare(aWordPtr, &ipIDString, false);
-        if (!isEqual) break;
+        isEqual = Compare(aWordPtr, &ip4IDString, false);
+        if (isEqual) {
 
-        aWordPtr = theLinePtr->fWords.SetPos(3);            
-        if (!aWordPtr) break;
+            aWordPtr = theLinePtr->fWords.SetPos(3);
+            if (!aWordPtr) break;
         
-        fIPAddressString.SetString(aWordPtr->fTheString, aWordPtr->fLen);
-        result = true;
+            fIPAddressString.SetString(aWordPtr->fTheString, aWordPtr->fLen);
+            result = true;
+        } else if (Compare(aWordPtr, &ip6IDString, false)) {
+            aWordPtr = theLinePtr->fWords.SetPos(theLinePtr->fWords.Size()-1);
+            int length = aWordPtr->fTheString + aWordPtr->fLen - theLinePtr->fWords.SetPos(3)->fTheString;
+            fIPAddressString.SetString(theLinePtr->fWords.SetPos(3)->fTheString, length);
+            result = true;
+        }
         
     } while (false);
         
