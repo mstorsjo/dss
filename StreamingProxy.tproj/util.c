@@ -35,16 +35,15 @@
 #include <time.h>
 #include <fcntl.h>
 #include <assert.h>
+#include <netdb.h>
 
 #include "util.h"
 static char to_lower(int c);
 
 /**********************************************/
-static char ip_string_buffer[20];
-char *ip_to_string(int ip) {
-    sprintf(ip_string_buffer, "%d.%d.%d.%d",
-        (ip & 0xff000000) >> 24, (ip & 0x00ff0000) >> 16,
-        (ip & 0x0000ff00) >> 8, (ip & 0x000000ff));
+static char ip_string_buffer[NI_MAXHOST];
+char *ip_to_string(struct sockaddr_storage ip) {
+    getnameinfo((struct sockaddr*) &ip, sizeof(ip), ip_string_buffer, sizeof(ip_string_buffer), NULL, 0, NI_NUMERICHOST);
     return ip_string_buffer;
 }
 
@@ -190,10 +189,10 @@ char *str_sep(char **stringp, char *delim)
 typedef struct t_ip_cache {
     struct t_ip_cache *next;
     char    *name;
-    int     ip;
+    struct sockaddr_storage     ip;
 } t_ip_cache;
 static t_ip_cache *gIPcache = NULL;
-int check_IP_cache(char *name, int *ip)
+int check_IP_cache(char *name, struct sockaddr_storage *ip)
 {
     t_ip_cache *cur = gIPcache;
     
@@ -208,7 +207,7 @@ int check_IP_cache(char *name, int *ip)
 }
 
 /**********************************************/
-int add_to_IP_cache(char *name, int ip)
+int add_to_IP_cache(char *name, struct sockaddr_storage ip)
 {
     t_ip_cache *cur;
     
@@ -269,5 +268,54 @@ int inet_aton_(char *s, int *retval)
     }
     *retval = ret;
     return good;
+}
+
+bool equal_ip(struct sockaddr_storage a, struct sockaddr_storage b)
+{
+    if (a.ss_family != b.ss_family)
+        return false;
+    switch (a.ss_family) {
+    case AF_INET:
+        return memcmp(&((struct sockaddr_in*)&a)->sin_addr, &((struct sockaddr_in*)&b)->sin_addr, sizeof(struct in_addr)) == 0;
+    case AF_INET6:
+        return memcmp(&((struct sockaddr_in6*)&a)->sin6_addr, &((struct sockaddr_in6*)&b)->sin6_addr, sizeof(struct in6_addr)) == 0;
+    }
+    return 1;
+}
+
+bool empty_ip(struct sockaddr_storage ip)
+{
+    return ip.ss_family == 0;
+}
+
+bool special_ip(struct sockaddr_storage ip, int type)
+{
+    return ip.ss_family == type;
+}
+
+bool equal_ip_range(struct sockaddr_storage a, struct sockaddr_storage b, int range)
+{
+     if (a.ss_family != b.ss_family)
+         return false;
+     const uint8_t *ptr1 = NULL, *ptr2 = NULL;
+     switch (a.ss_family) {
+     case AF_INET:
+         ptr1 = (const uint8_t*) &((struct sockaddr_in*)&a)->sin_addr;
+         ptr2 = (const uint8_t*) &((struct sockaddr_in*)&b)->sin_addr;
+         break;
+     case AF_INET6:
+         ptr1 = (const uint8_t*) &((struct sockaddr_in6*)&a)->sin6_addr;
+         ptr2 = (const uint8_t*) &((struct sockaddr_in6*)&b)->sin6_addr;
+         break;
+     }
+     if (!ptr1)
+         return false;
+     int i;
+     for (i = 0; i < range; i++) {
+         int mask = i << (7 - (i % 8));
+         if ((ptr1[i / 8] & mask) != (ptr2[i / 8] & mask))
+             return false;
+     }
+     return true;
 }
 

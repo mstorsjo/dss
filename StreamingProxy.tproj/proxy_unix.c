@@ -76,7 +76,8 @@ int init_network()
 #define kKILL_THREAD -3
 int term_network() 
 {
-    int send = kKILL_THREAD;
+    struct sockaddr_storage send;
+    send.ss_family = kKILL_THREAD;
     name_to_ip_num("", &send, true);
     return 0;
 }
@@ -121,16 +122,14 @@ again:
 }
 #endif
 /**********************************************/
-int name_to_ip_num(char *name, int *ip, int async)
+int name_to_ip_num(char *name, struct sockaddr_storage *ip, int async)
 {
-    int             ret;
-    struct  in_addr addr;
-    int             tryAgain = 0;
+    struct sockaddr_storage             ret;
 #if USE_THREAD
     ghpb pb = NULL;
     pthread_t   tid;
 #endif
-    struct hostent *hent;
+    struct addrinfo hints, *ai = NULL;
     
     if (check_IP_cache(name, &ret) != -1)
     {
@@ -151,66 +150,84 @@ int name_to_ip_num(char *name, int *ip, int async)
     }
 #endif
 
-again:
-
-    tryAgain ++;
-    if ( inet_aton( name, &addr ) )
-    {   *ip = ntohl( addr.s_addr );
-        add_to_IP_cache(name, *ip ); 
-        return 0;
-    }
-    
-    hent = gethostbyname(name);
-    if (hent == NULL) {
-        if (h_errno == TRY_AGAIN)
-            if (tryAgain < 10)
-                goto again;
-        add_to_IP_cache(name, -1);
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    getaddrinfo(name, NULL, &hints, &ai);
+    if (ai == NULL) {
+        memset(&ret, 0, sizeof(ret));
+        add_to_IP_cache(name, ret);
         return -1;
     }
-    *ip = ntohl(((struct in_addr *) (hent->h_addr_list[0]))->s_addr);
+    memcpy(ip, ai->ai_addr, ai->ai_addrlen < sizeof(*ip) ? ai->ai_addrlen : sizeof(*ip));
+    freeaddrinfo(ai);
     add_to_IP_cache(name, *ip);
     return 0;
 }
 
+static int get_port(const struct sockaddr_storage* addr)
+{
+    switch (addr->ss_family) {
+    case AF_INET:
+        return ntohs(((struct sockaddr_in*)addr)->sin_port);
+    case AF_INET6:
+        return ntohs(((struct sockaddr_in6*)addr)->sin6_port);
+    default:
+        return 0;
+    }
+}
+
+static void set_port(struct sockaddr_storage* addr, int port)
+{
+    switch (addr->ss_family) {
+    case AF_INET:
+        ((struct sockaddr_in*)addr)->sin_port = htons(port);
+        break;
+    case AF_INET6:
+        ((struct sockaddr_in6*)addr)->sin6_port = htons(port);
+        break;
+    default:
+        break;
+    }
+}
 
 /**********************************************/
-int get_remote_address(int skt, int *port) 
+struct sockaddr_storage get_remote_address(int skt, int *port)
 {
 #if !defined(sparc) && !defined(SGI) && !defined(WIN32)
     unsigned
 #endif
-        int nAddrSize = sizeof(struct sockaddr_in);
-    struct sockaddr_in  remAddr;
+        int nAddrSize = sizeof(struct sockaddr_storage);
+    struct sockaddr_storage  remAddr;
     int  status;
-    remAddr.sin_addr.s_addr = INADDR_ANY;
     status = getpeername(skt, (struct sockaddr*)&remAddr, &nAddrSize);
     if (status >= 0) 
         {
         if (port)
-            *port = ntohs(remAddr.sin_port);
-        return ntohl(remAddr.sin_addr.s_addr);
+            *port = get_port(&remAddr);
+        return remAddr;
     }
-    return -1;
+    memset(&remAddr, 0, sizeof(remAddr));
+    return remAddr;
 }
 
 /**********************************************/
-int get_local_address(int skt, int *port) {
+struct sockaddr_storage get_local_address(int skt, int *port) {
 #if !defined(sparc) && !defined(SGI) && !defined(WIN32)
     unsigned
 #endif
-        int nAddrSize = sizeof(struct sockaddr_in);
-    struct sockaddr_in  remAddr;
+        int nAddrSize = sizeof(struct sockaddr_storage);
+    struct sockaddr_storage  remAddr;
     int  status;
-    remAddr.sin_addr.s_addr = INADDR_ANY;
     status = getsockname(skt, (struct sockaddr*)&remAddr, &nAddrSize);
     if (status >= 0) 
         {
         if (port)
-                    *port = ntohs(remAddr.sin_port);
-        return ntohl(remAddr.sin_addr.s_addr);
+            *port = get_port(&remAddr);
+        return remAddr;
     }
-    return -1;
+    memset(&remAddr, 0, sizeof(remAddr));
+    return remAddr;
 }
 
 /**********************************************/
@@ -342,20 +359,20 @@ bool isWritable(int fd)
 }
 
 /**********************************************/
-int new_socket_udp(void)
+int new_socket_udp(int family)
 {
     int ret;
-    ret = socket(PF_INET, SOCK_DGRAM, 0);
+    ret = socket(family, SOCK_DGRAM, 0);
     gMaxPorts++;
     set_socket_max_buf(ret);
     return ret;
 }
 
 /**********************************************/
-int new_socket_tcp(int is_listener)
+int new_socket_tcp(int family, int is_listener)
 {
     int ret;
-    ret = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ret = socket(family, SOCK_STREAM, IPPROTO_TCP);
     gMaxPorts++;
     return ret;
 }
@@ -388,18 +405,21 @@ void set_socket_max_buf(int skt)
 }
 
 /**********************************************/
-int bind_socket_to_address(int skt, int address, int port, int is_listener)
+int bind_socket_to_address(int skt, const struct sockaddr *address, int port, int is_listener)
 {
     struct sockaddr_in sin;
-    
-    if (address == -1)
-        address = INADDR_ANY;
-        
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    sin.sin_addr.s_addr = htonl(address);
-    return bind(skt, (struct sockaddr*)&sin, sizeof(sin));
+    struct sockaddr_in6 sin6;
+    switch (address->sa_family) {
+    case AF_INET:
+        memcpy(&sin, address, sizeof(sin));
+        sin.sin_port = htons(port);
+        return bind(skt, (struct sockaddr*)&sin, sizeof(sin));
+    case AF_INET6:
+        memcpy(&sin6, address, sizeof(sin6));
+        sin6.sin6_port = htons(port);
+        return bind(skt, (struct sockaddr*)&sin6, sizeof(sin6));
+    }
+    return -1;
 }
 
 /**********************************************/
@@ -448,57 +468,65 @@ int accept_connection(int from, int *to)
 }
 
 /**********************************************/
-int connect_to_address(int skt, int address, int port)
+int connect_to_address(int skt, struct sockaddr_storage address, int port)
 {
-    struct sockaddr_in sin;
-    
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    sin.sin_addr.s_addr = htonl(address);;
-    return connect(skt, (struct sockaddr*)&sin, sizeof(sin));
+    set_port(&address, port);
+    int len = sizeof(address);
+    switch (address.ss_family) {
+    case AF_INET:
+        len = sizeof(struct sockaddr_in);
+        break;
+    case AF_INET6:
+        len = sizeof(struct sockaddr_in6);
+        break;
+    }
+    return connect(skt, (struct sockaddr*)&address, len);
 }
 
-int get_interface_addr(int skt)
+struct sockaddr_storage get_interface_addr(int skt)
 {
     int err = 0;
-    struct sockaddr_in  localAddr;
+    struct sockaddr_storage  localAddr;
     unsigned int len = sizeof(localAddr);
     memset(&localAddr, 0, sizeof(localAddr));
     
     err = getsockname(skt, (struct sockaddr*)&localAddr, &len);
-    return ntohl(localAddr.sin_addr.s_addr);
+    return localAddr;
 }
 
 /**********************************************/
-int recv_udp(int socket, char *buf, int amt, int *fromip, int *fromport)
+int recv_udp(int socket, char *buf, int amt, struct sockaddr_storage *fromip, int *fromport)
 {
-    struct sockaddr_in  sin;
     int ret;
 	unsigned int len;
+    struct sockaddr_storage temp;
 
-    len = sizeof(sin);
-    memset(&sin, 0, sizeof(sin));
-    ret = recvfrom(socket, buf, (size_t) amt, 0, (struct sockaddr*)&sin, &len);
+    len = sizeof(temp);
+    memset(fromip, 0, sizeof(*fromip));
+    ret = recvfrom(socket, buf, (size_t) amt, 0, (struct sockaddr*) &temp, &len);
     if (ret != -1) {
         if (fromip)
-            *fromip = ntohl(sin.sin_addr.s_addr);
+            *fromip = temp;
         if (fromport)
-            *fromport = ntohs(sin.sin_port);
+            *fromport = get_port(&temp);
     }
     return ret;
 }
 
 /**********************************************/
-int send_udp(int skt, char *buf, int amt, int address, int port)
+int send_udp(int skt, char *buf, int amt, struct sockaddr_storage address, int port)
 {
-    struct sockaddr_in sin;
-    
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(port);
-    sin.sin_addr.s_addr = htonl(address);
-    return sendto(skt, buf, (size_t) amt, 0, (struct sockaddr*)&sin, sizeof(sin));
+    set_port(&address, port);
+    int len = sizeof(address);
+    switch (address.ss_family) {
+    case AF_INET:
+        len = sizeof(struct sockaddr_in);
+        break;
+    case AF_INET6:
+        len = sizeof(struct sockaddr_in6);
+        break;
+    }
+    return sendto(skt, buf, (size_t) amt, 0, (struct sockaddr*)&address, len);
 }
 
 /**********************************************/

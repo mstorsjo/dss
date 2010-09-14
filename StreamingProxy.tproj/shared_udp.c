@@ -59,6 +59,7 @@
 
 #include "shared_udp.h"
 #include "proxy_plat.h"
+#include "util.h"
 
 #if DEBUG
     #define DEBUGPRINT(x)   printf x
@@ -70,14 +71,14 @@
 shok    *gShokList = NULL;
 
 /**********************************************/
-ipList *find_ip_in_list(ipList *list, int ip)
+ipList *find_ip_in_list(ipList *list, struct sockaddr_storage ip)
 {
     ipList *cur = list;
 
-    DEBUGPRINT(( "-- -- looking for IP %x in IP list\n", ip));
+    DEBUGPRINT(( "-- -- looking for IP %s in IP list\n", ip_to_string(ip)));
     while (cur) {
-        DEBUGPRINT(("-- -- vs. %x\n", cur->ip));
-        if (cur->ip == ip) {
+        DEBUGPRINT(("-- -- vs. %s\n", ip_to_string(cur->ip)));
+        if (equal_ip(cur->ip, ip)) {
             DEBUGPRINT(("-- -- FOUND\n"));
             return cur;
         }
@@ -88,7 +89,7 @@ ipList *find_ip_in_list(ipList *list, int ip)
 }
 
 /**********************************************/
-int add_ip_to_list(ipList **list, int ip)
+int add_ip_to_list(ipList **list, struct sockaddr_storage ip)
 {
     ipList  *newEl;
 
@@ -105,11 +106,11 @@ int add_ip_to_list(ipList **list, int ip)
 }
 
 /**********************************************/
-int remove_ip_from_list(ipList **list, int ip)
+int remove_ip_from_list(ipList **list, struct sockaddr_storage ip)
 {
     ipList  *last, *theEl = *list;
 
-    if (theEl->ip == ip) {
+    if (equal_ip(theEl->ip, ip)) {
         *list = theEl->next;
         free(theEl);
         return true;
@@ -118,7 +119,7 @@ int remove_ip_from_list(ipList **list, int ip)
     last = theEl;
     theEl = theEl->next;
     while (theEl) {
-        if (theEl->ip == ip) {
+        if (equal_ip(theEl->ip, ip)) {
             last->next = theEl->next;
             free(theEl);
             return true;
@@ -130,15 +131,20 @@ int remove_ip_from_list(ipList **list, int ip)
 }
 
 /**********************************************/
-shok *find_available_shok(int fromIP, int toIP, int withSib)
+shok *find_available_shok(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib)
 {   
     shok    *cur = gShokList;
 
     while (cur) {
-        DEBUGPRINT(("-- looking for IP %x in shok %p\n", toIP, cur));
+        DEBUGPRINT(("-- looking for IP %s in shok %p\n", ip_to_string(toIP), cur));
+        if (!equal_ip(fromIP, cur->fromIP)) {
+            DEBUGPRINT(("-- skipping, different source IPs\n"));
+            cur = cur->next;
+            continue;
+        }
         if (find_ip_in_list(cur->ips, toIP) == NULL) {
             if (withSib) {
-                DEBUGPRINT(("-- looking for IP %x in SIB shok %p\n", toIP, cur->sib));
+                DEBUGPRINT(("-- looking for IP %s in SIB shok %p\n", ip_to_string(toIP), cur->sib));
                 if (find_ip_in_list(cur->sib->ips, toIP) == NULL)
                     return cur;
             }
@@ -152,7 +158,7 @@ shok *find_available_shok(int fromIP, int toIP, int withSib)
 }
 
 /**********************************************/
-int add_ips_to_shok(shok *theShok, int fromIP, int toIP, int withSib)
+int add_ips_to_shok(shok *theShok, struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib)
 {
     add_ip_to_list(&(theShok->ips), toIP);
     if (withSib)
@@ -217,7 +223,7 @@ doSib:
 }
 
 /**********************************************/
-void remove_shok_ref(shok *theShok, int fromIP, int toIP, int withSib)
+void remove_shok_ref(shok *theShok, struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib)
 {
     remove_ip_from_list(&(theShok->ips), toIP);
     if (withSib)
@@ -229,7 +235,7 @@ void remove_shok_ref(shok *theShok, int fromIP, int toIP, int withSib)
 }
 
 /**********************************************/
-shok *make_new_shok(int fromIP, int toIP, int withSib)
+shok *make_new_shok(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib)
 {
     shok *theShok1 = NULL, *theShok2 = NULL;
     int skt1 = INVALID_SOCKET, skt2 = INVALID_SOCKET;
@@ -248,7 +254,7 @@ shok *make_new_shok(int fromIP, int toIP, int withSib)
     if (gNextPort == -1)
         gNextPort = gUDPPortMin;
 retry:
-    if ((skt1 = new_socket_udp()) == SOCKET_ERROR)
+    if ((skt1 = new_socket_udp(toIP.ss_family)) == SOCKET_ERROR)
         goto bail_error;
     if (skt1 == 0) {
         if (GetLastSocketError(skt1) == EINPROGRESS || GetLastSocketError(skt1) == EAGAIN)
@@ -261,11 +267,11 @@ retry:
             gNextPort++;
         if (gNextPort > gUDPPortMax)
             gNextPort = gUDPPortMin;
-    } while (bind_socket_to_address(skt1, fromIP, port1 = gNextPort++, false) != 0);
+    } while (bind_socket_to_address(skt1, (struct sockaddr*) &fromIP, port1 = gNextPort++, false) != 0);
 
     if (withSib) {
 retry_rtcp:
-        if ((skt2 = new_socket_udp()) == SOCKET_ERROR)
+        if ((skt2 = new_socket_udp(toIP.ss_family)) == SOCKET_ERROR)
             goto bail_error;
         if (skt2 == 0) {
             if (GetLastSocketError(skt2) == EINPROGRESS || GetLastSocketError(skt2) == EAGAIN)
@@ -273,7 +279,7 @@ retry_rtcp:
             else
                 goto bail_error;
         }
-        if (bind_socket_to_address(skt2, fromIP, port2 = gNextPort++, false) != 0) {
+        if (bind_socket_to_address(skt2, (struct sockaddr*) &fromIP, port2 = gNextPort++, false) != 0) {
             close_socket(skt1);
             close_socket(skt2);
             skt1 = INVALID_SOCKET;
@@ -285,12 +291,14 @@ retry_rtcp:
     make_socket_nonblocking(skt1);
     theShok1->socket = skt1;
     theShok1->port = port1;
+    theShok1->fromIP = fromIP;
     theShok1->ips = NULL;
 
     if (withSib) {
         make_socket_nonblocking(skt2);
         theShok2->socket = skt2;
         theShok2->port = port2;
+        theShok2->fromIP = fromIP;
         theShok2->ips = NULL;
         theShok2->sib = theShok1;
 
@@ -320,11 +328,12 @@ bail_error:
 }
 
 /**********************************************/
-int make_udp_port_pair(int fromIP, int toIP, shok **rtpSocket, shok **rtcpSocket)
+int make_udp_port_pair(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, shok **rtpSocket, shok **rtcpSocket)
 {
     shok    *theShok;
 
-    DEBUGPRINT(("MAKE_UDP_PORT_PAIR from %x to %x\n", fromIP, toIP));
+    DEBUGPRINT(("MAKE_UDP_PORT_PAIR from %s", ip_to_string(fromIP)));
+    DEBUGPRINT((" to %s\n", ip_to_string(toIP)));
     DEBUGPRINT(("looking for available shok\n"));
 
     if ((theShok = find_available_shok(fromIP, toIP, true)) != NULL) {
@@ -346,10 +355,10 @@ int make_udp_port_pair(int fromIP, int toIP, shok **rtpSocket, shok **rtcpSocket
 }
 
 /**********************************************/
-int upon_receipt_from(shok *theShok, int fromIP, do_routine doThis, void *withThis)
+int upon_receipt_from(shok *theShok, struct sockaddr_storage fromIP, do_routine doThis, void *withThis)
 {
     ipList  *listEl;
-    DEBUGPRINT(( "UPON_RECEIPT_FROM %x do routine %p\n", fromIP, doThis));
+    DEBUGPRINT(( "UPON_RECEIPT_FROM %s do routine %p\n", ip_to_string(fromIP), doThis));
     listEl = find_ip_in_list(theShok->ips, fromIP);
     if (!listEl)
         return -1;
@@ -377,7 +386,8 @@ int service_shoks()
     cur = gShokList;
     while (cur) {
         do_routine  doit;
-        int         ret, fromPort, fromIP;
+        int         ret, fromPort;
+        struct sockaddr_storage fromIP;
 
 again:
         doit = NULL;
@@ -385,7 +395,7 @@ again:
         if (ret > 0) {
             ipList *ipl = NULL;
 
-            DEBUGPRINT(("Got %d bytes for %x on port %d on socket %d\n", ret, fromIP, fromPort, cur->socket));
+            DEBUGPRINT(("Got %d bytes for %s on port %d on socket %d\n", ret, ip_to_string(fromIP), fromPort, cur->socket));
             gBytesReceived += ret;
             gPacketsReceived++;
             ipl = find_ip_in_list(cur->ips, fromIP);
@@ -462,8 +472,8 @@ int transfer_data(void *refCon, char *buf, int bufSize)
     }
     
     ret = send_udp(tpb->send_from->socket, buf, bufSize, tpb->send_to_ip, tpb->send_to_port);
-    DEBUGPRINT(("Sent %d bytes to %x on port %d on socket %d\n", 
-                        ret, tpb->send_to_ip, tpb->send_to_port, tpb->send_from->socket));
+    DEBUGPRINT(("Sent %d bytes to %s on port %d on socket %d\n",
+                        ret, ip_to_string(tpb->send_to_ip), tpb->send_to_port, tpb->send_from->socket));
     if (ret > 0)
     {   gBytesSent += ret;
         gPacketsSent++;

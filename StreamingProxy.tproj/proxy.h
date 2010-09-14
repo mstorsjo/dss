@@ -100,12 +100,12 @@ typedef struct rtsp_session {
     int     die;
     int     newSession;
     int     client_skt;
-    int     client_ip;
+    struct sockaddr_storage     client_ip;
     char        *server_address;
     int     server_skt;
-    int     server_interface_addr;
-    int     client_interface_addr;
-    int     server_ip;
+    struct sockaddr_storage     server_interface_addr;
+    struct sockaddr_storage     client_interface_addr;
+    struct sockaddr_storage     server_ip;
     int     server_port;
     int     server_skt_pending_connection;
     int     state;
@@ -129,12 +129,12 @@ typedef struct rtsp_session {
     int         contentLength;
     char*       responseBodyP;
 
-    int     tempIP;
+    struct sockaddr_storage     tempIP;
 } rtsp_session;
 
 typedef struct subnet_allow {
     struct subnet_allow *next;
-    int     ip;
+    struct sockaddr_storage     ip;
     int     range;
 } subnet_allow;
 
@@ -148,7 +148,7 @@ typedef struct rtsp_listener {
 int service_listeners();
 int service_sessions();
 
-void add_rtsp_port_listener(int address,int port);
+void add_rtsp_port_listener(const struct sockaddr* address,int port);
 void cleanup_listeners(void);
 void answer_new_connection(rtsp_listener *listener);
 void add_session(rtsp_session *session);
@@ -159,8 +159,8 @@ void cleanup_session(rtsp_session *session);
 void service_session(rtsp_session *session);
 void service_session_rtp(rtsp_session *session);
 void read_config(void);
-void add_allow_subnet(int ip, int range);
-bool allow_ip(int ip);
+void add_allow_subnet(struct sockaddr_storage ip, int range);
+bool allow_ip(struct sockaddr_storage ip);
 void send_rtsp_error(int skt, int refusal);
 
 #endif // __PROXY_H__

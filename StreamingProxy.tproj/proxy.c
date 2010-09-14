@@ -98,7 +98,7 @@ int     gNumUsers = 0;
 //int       gUDPPortMin = 4000;
 //int       gUDPPortMax = 65535;
 
-int     gProxyIP = -1;
+struct sockaddr_storage     gProxyIP;
 int         gRTSPIP   = ANY_ADDRESS;
 int     gMaxPorts = 0;
 
@@ -316,8 +316,20 @@ int main(int argc, char *argv[])
     // set up rtsp listener (if necessary)
     //  -- if it wasn't specified in the config file, or the user had
     //     one on the command line
-    if (!gListeners || user_listener)
-        add_rtsp_port_listener(ANY_ADDRESS,listening_port);
+    if (!gListeners || user_listener) {
+        struct addrinfo hints, *ai, *ai0 = NULL;
+        memset(&hints, 0, sizeof(hints));
+        hints.ai_family = PF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_PASSIVE;
+        getaddrinfo(NULL, "0", &hints, &ai0);
+        ai = ai0;
+        while (ai) {
+            add_rtsp_port_listener(ai->ai_addr, listening_port);
+            ai = ai->ai_next;
+        }
+        freeaddrinfo(ai0);
+    }
 
     /* exit if we can't listen */
     if (!gListeners) {
@@ -331,7 +343,7 @@ int main(int argc, char *argv[])
         name_to_ip_num(hostname, &gProxyIP, false);
         
     //
-    if (gProxyIP == -1)
+    if (gProxyIP.ss_family == 0)
     {   //gProxyIP = get_local_ip_address(); this returns the local loopback (127.0.0.1) and is useless
         ErrorString("An rtp-bind-addr configuration line or -i command line option is required.\n");
         return -1;
@@ -454,7 +466,7 @@ void cleanup_listeners()
 }
 
 /**********************************************/
-void add_rtsp_port_listener(int address,int port)
+void add_rtsp_port_listener(const struct sockaddr* address,int port)
 {
     rtsp_listener *listener;
     int skt;
@@ -462,12 +474,18 @@ void add_rtsp_port_listener(int address,int port)
     if (gVerbose)
         printf("Listening for RTSP messages on port %d\n", port);
 
-    if ((skt = new_socket_tcp(true)) == INVALID_SOCKET) {
+    if ((skt = new_socket_tcp(address->sa_family, true)) == INVALID_SOCKET) {
         ErrorString1("couldn't set up RTSP listening socket (%d): %m\n",
                  port);
         return;
     }
     set_socket_reuse_address(skt);
+#if defined(IPV6_V6ONLY) && defined(IPPROTO_IPV6)
+    if (address->sa_family == AF_INET6) {
+        int v6only = 1;
+        setsockopt(skt, IPPROTO_IPV6, IPV6_V6ONLY, (char*) &v6only, sizeof(v6only));
+    }
+#endif
 
     if (bind_socket_to_address(skt, address, port, true) == SOCKET_ERROR) 
         {
@@ -586,12 +604,12 @@ rtsp_session *new_session(void)
         s->next = NULL;
         s->die = false;
         s->client_skt = INVALID_SOCKET;
-        s->client_ip = -1;
+        memset(&s->client_ip, 0, sizeof(s->client_ip));
         s->server_address = NULL;
         s->server_skt = INVALID_SOCKET;
-        s->server_interface_addr = 0;
-        s->client_interface_addr = 0;
-        s->server_ip = -1;
+        memset(&s->server_interface_addr, 0, sizeof(s->server_interface_addr));
+        memset(&s->client_interface_addr, 0, sizeof(s->client_interface_addr));
+        memset(&s->server_ip, 0, sizeof(s->server_ip));
         s->server_port = 554;
         s->server_skt_pending_connection = false;
         s->state = stRecvClientCommand;
@@ -612,7 +630,7 @@ rtsp_session *new_session(void)
             
             s->trk[i].RTP_S2C_tpb.status = NULL;
             s->trk[i].RTP_S2C_tpb.send_from = NULL;
-            s->trk[i].RTP_S2C_tpb.send_to_ip = -1;
+            memset(&s->trk[i].RTP_S2C_tpb.send_to_ip, 0, sizeof(struct sockaddr_storage));
             s->trk[i].RTP_S2C_tpb.send_to_port = -1;
             s->trk[i].RTP_S2C_tpb.packetSendCount = 0;
             s->trk[i].RTP_S2C_tpb.nextDropPacket = 0;
@@ -620,7 +638,7 @@ rtsp_session *new_session(void)
             
             s->trk[i].RTCP_S2C_tpb.status = NULL;
             s->trk[i].RTCP_S2C_tpb.send_from = NULL;
-            s->trk[i].RTCP_S2C_tpb.send_to_ip = -1;
+            memset(&s->trk[i].RTCP_S2C_tpb.send_to_ip, 0, sizeof(struct sockaddr_storage));
             s->trk[i].RTCP_S2C_tpb.send_to_port = -1;
             s->trk[i].RTCP_S2C_tpb.packetSendCount = 0;
             s->trk[i].RTCP_S2C_tpb.nextDropPacket = 0;
@@ -628,7 +646,7 @@ rtsp_session *new_session(void)
             
             s->trk[i].RTCP_C2S_tpb.status = NULL;
             s->trk[i].RTCP_C2S_tpb.send_from = NULL;
-            s->trk[i].RTCP_C2S_tpb.send_to_ip = -1;
+            memset(&s->trk[i].RTCP_C2S_tpb.send_to_ip, 0, sizeof(struct sockaddr_storage));
             s->trk[i].RTCP_C2S_tpb.send_to_port = -1;
             s->trk[i].RTCP_C2S_tpb.packetSendCount = 0;
             s->trk[i].RTCP_C2S_tpb.nextDropPacket = 0;
@@ -1117,11 +1135,17 @@ void service_session(rtsp_session *s)
                         free(s->server_address);
                     s->server_address = malloc(strlen(temp) + 1);
                     assert(s->server_address != NULL);
-                    strcpy(s->server_address, temp);
-                    //
-                    // take port off address (if any)
-                    if ((w = strchr(s->server_address, ':')) != NULL)
-                        *w++ = '\0';
+                    if (temp[0] == '[') {
+                        strcpy(s->server_address, temp + 1);
+                        if ((w = strchr(s->server_address, ']')) != NULL)
+                            *w++ = '\0';
+                    } else {
+                        strcpy(s->server_address, temp);
+                        //
+                        // take port off address (if any)
+                        if ((w = strchr(s->server_address, ':')) != NULL)
+                            *w++ = '\0';
+                    }
                     //
                     // make an async request for the IP number
 #if USE_THREAD
@@ -1143,12 +1167,12 @@ void service_session(rtsp_session *s)
             break;
 
         case stWaitingForIPAddress:
-            if (s->tempIP != kPENDING_ADDRESS) 
+            if (!special_ip(s->tempIP, kPENDING_ADDRESS))
                         {
                 add_to_IP_cache(s->server_address, s->tempIP);
                 s->state = stParseClientCommand;
             }
-            if (s->tempIP == -1) 
+            if (empty_ip(s->tempIP))
                         {
                 send_rtsp_error(s->client_skt, kServerNotFound);
                 s->state = stBadServerName;
@@ -1179,37 +1203,48 @@ void service_session(rtsp_session *s)
                 // see if we can snarf our data out of the headers
                 if (is_command(p, cmd,sizeof(cmd), temp, sizeof(temp) )) 
                                 {
-                    int ip;
+                    struct sockaddr_storage ip;
                     //
                     // get server address
                     if (s->server_address != NULL)
                         free(s->server_address);
                     s->server_address = malloc(strlen(temp) + 1);
                                         assert(s->server_address != NULL);
-                    strcpy(s->server_address, temp);
-                    //
-                    // get server port (if any)
-                    if ((w = strchr(s->server_address, ':')) != NULL) 
+                    if (temp[0] == '[') {
+                        strcpy(s->server_address, temp + 1);
+                        if ((w = strchr(s->server_address, ']')) != NULL) {
+                            *w++ = '\0';
+                            if ((w = strchr(w, ':')) != NULL) {
+                                *w++ = '\0';
+                                s->server_port = atoi(w);
+                            }
+                        }
+                    } else {
+                        strcpy(s->server_address, temp);
+                        //
+                        // get server port (if any)
+                        if ((w = strchr(s->server_address, ':')) != NULL) 
                                         {
-                        *w++ = '\0';
-                        s->server_port = atoi(w);
+                            *w++ = '\0';
+                            s->server_port = atoi(w);
+                        }
                     }
                     //
                     // check to see if command is pointing to the same server that
                     // we're already connected to.
                     name_to_ip_num(s->server_address, &ip, false);
-                    if ((ip != s->server_ip) && (s->server_skt != INVALID_SOCKET)) {
+                    if (!equal_ip(ip, s->server_ip) && (s->server_skt != INVALID_SOCKET)) {
                         close_socket(s->server_skt);
                         s->server_skt = INVALID_SOCKET;
                         s->server_ip = ip;
                     }
                     
-                    if (ip == -1) {
+                    if (empty_ip(ip)) {
                         s->state = stBadServerName;
                         return;
                     }
 
-                    if (gProxyIP == ip ) // don't connect to yourself
+                    if (equal_ip(gProxyIP, ip)) // don't connect to yourself
                     {
                         ErrorStringS("Invalid session: destination IP is the same as this proxy IP (%s).\n",ip_to_string(ip));
                         close_socket(s->server_skt);
@@ -1320,7 +1355,7 @@ void service_session(rtsp_session *s)
                         {
                 //
                 // create a connection if we don't have one
-                if ((s->server_skt = new_socket_tcp(false)) == INVALID_SOCKET) {
+                if ((s->server_skt = new_socket_tcp(s->server_ip.ss_family, false)) == INVALID_SOCKET) {
                     ErrorString("Couldn't open a socket to connect to server.\n");
                     s->state = stError;
                     return;
@@ -1718,7 +1753,7 @@ void service_session(rtsp_session *s)
             
 
         case stClientShutdown:
-            if (gDebug && s->client_ip != -1) DebugString1("Client shutdown (ip %s)", ip_to_string(s->client_ip));
+            if (gDebug && !empty_ip(s->client_ip)) DebugString1("Client shutdown (ip %s)", ip_to_string(s->client_ip));
             s->die = true;
             gNeedsService++;
             break;
@@ -1734,7 +1769,7 @@ void service_session(rtsp_session *s)
             break;
             
         case stServerShutdown:
-            if (gDebug && s->server_ip != -1) DebugString1("Server shutdown (ip %s)", ip_to_string(s->server_ip));
+            if (gDebug && !empty_ip(s->server_ip)) DebugString1("Server shutdown (ip %s)", ip_to_string(s->server_ip));
             s->die = true;
             gNeedsService++;
             break;
@@ -1778,14 +1813,14 @@ void read_config() {
             REG_EXTENDED | REG_ICASE);
     regcomp(&regexpUsers, "^[ \t]*users[ \t]+([0-9]+).*$",
             REG_EXTENDED | REG_ICASE);
-    regcomp(&regexpListen, "^[ \t]*listen[ \t]+([0-9\\.]+[ \t]+)?([0-9]+).*$",
+    regcomp(&regexpListen, "^[ \t]*listen[ \t]+([a-f0-9\\.:]+[ \t]+)?([0-9]+).*$",
             REG_EXTENDED | REG_ICASE);
 
     regcomp(&regexpPortRange, "^[ \t]*port-range[ \t]+([0-9]+)-([0-9]+).*$",
             REG_EXTENDED | REG_ICASE);
     regcomp(&regexpComment, "^[ \t]*#.*$", REG_EXTENDED | REG_ICASE);
 
-    regcomp(&regexpRTPAddr, "^[ \t]*rtp-bind-addr[ \t]+([a-z0-9\\.\\-]+).*$",REG_EXTENDED | REG_ICASE);
+    regcomp(&regexpRTPAddr, "^[ \t]*rtp-bind-addr[ \t]+([a-z0-9\\.:\\-]+).*$",REG_EXTENDED | REG_ICASE);
 
     eof = false;
     while (!eof) {
@@ -1810,14 +1845,14 @@ void read_config() {
         // if the line has anything, try to parse it
         if (line_pos > 0) {
             if (regexec(&regexpAllow, line, 3, pmatch, 0) == 0) {
-                int     ip, range;
+                int     range;
+                struct sockaddr_storage ip;
 
                 num = pmatch[1].rm_eo - pmatch[1].rm_so;
                 memcpy(temp, line + pmatch[1].rm_so, (size_t) num);
                 temp[num] = '\0';
                 range = atoi(line + pmatch[2].rm_so);
-                //name_to_ip_num(temp, &ip, false);
-                ip = ntohl(inet_addr(temp));
+                name_to_ip_num(temp, &ip, false);
                 if (gVerbose)
                     printf("Allow connections from %s/%d\n", ip_to_string(ip), range);
                 add_allow_subnet(ip, range);
@@ -1828,24 +1863,29 @@ void read_config() {
                     printf("Limit number of users to %d\n", gUserLimit);
             }
             else if (regexec(&regexpListen, line, 3, pmatch, 0) == 0) {
-                    struct in_addr bindaddr;
                 int port = atoi(line + pmatch[2].rm_so);
-
+                struct addrinfo hints, *ai, *ai0 = NULL;
+                memset(&hints, 0, sizeof(hints));
+                hints.ai_family = PF_UNSPEC;
+                hints.ai_socktype = SOCK_STREAM;
+                hints.ai_flags = AI_PASSIVE;
                     if(pmatch[1].rm_so==-1)
-                  bindaddr.s_addr= (in_addr_t) htonl(ANY_ADDRESS);
+                  getaddrinfo(NULL, "0", &hints, &ai0);
                 else
                   {
                     *(line+pmatch[1].rm_eo)='\0';
-                    #if __solaris__
-                        bindaddr.s_addr = inet_addr(line+pmatch[1].rm_so);
-                        if( 0 == bindaddr.s_addr)
-                    #else
-                        if( inet_aton(line+pmatch[1].rm_so, (void *) &bindaddr)==0 )
-                    #endif
+                    while (pmatch[1].rm_eo > pmatch[1].rm_so && isspace(line[pmatch[1].rm_eo-1]))
+                        line[--pmatch[1].rm_eo]='\0';
+                    if (getaddrinfo(line+pmatch[1].rm_so, "0", &hints, &ai0))
                             printf("listen: failed to parse IP address %s\n",line+pmatch[1].rm_so);
               }
 
-                add_rtsp_port_listener( (int) ntohl(bindaddr.s_addr),port);
+              ai = ai0;
+              while (ai) {
+                add_rtsp_port_listener(ai->ai_addr, port);
+                ai = ai->ai_next;
+              }
+              freeaddrinfo(ai0);
             }
             else if (regexec(&regexpPortRange, line, 3, pmatch, 0) == 0) {
                 int minPort, maxPort;
@@ -1863,7 +1903,7 @@ void read_config() {
                 memcpy(temp, line + pmatch[1].rm_so, (size_t) num);
                 temp[num] = '\0';
                 name_to_ip_num(temp, &gProxyIP, false);
-                if (gProxyIP == -1) {
+                if (empty_ip(gProxyIP)) {
                     printf("unable to configure rtp-bind-addr: %s\n", temp);
                 } else if (gVerbose) {
                     printf("configured rtp-bind-addr: %s (%s)\n", temp, ip_to_string(gProxyIP));
@@ -1886,7 +1926,7 @@ void read_config() {
 }
 
 /**********************************************/
-void add_allow_subnet(int ip, int range)
+void add_allow_subnet(struct sockaddr_storage ip, int range)
 {
     subnet_allow *allow;
 
@@ -1899,39 +1939,8 @@ void add_allow_subnet(int ip, int range)
 }
 
 /**********************************************/
-static int bitfill(int bits)
+bool allow_ip(struct sockaddr_storage ip)
 {
-    int mask, i;
-
-    /* unroll the bit fill and deal with common subnet masks. */
-    if (bits >= 24) {
-            mask = 0xffffff00;
-        bits -= 24;
-        i = 24;
-    } else if (bits >= 16) {
-            mask = 0xffff0000;
-        bits -= 16;
-        i = 16;
-    } else if (bits >= 8) { 
-            mask = 0xff000000;
-        bits -= 8;
-        i = 8;
-    } else {
-            mask = i = 0;
-    }
-
-    /* only 7 more bits to go! */
-    while (bits) {
-        mask |= (1 << (32 - i - bits));
-        bits--;
-    }
-    return mask;
-}
-
-/**********************************************/
-bool allow_ip(int ip)
-{
-    int             mask;
     subnet_allow    *cur;
 
     cur = gAllowedNets;
@@ -1939,8 +1948,7 @@ bool allow_ip(int ip)
         return true;
 
     while (cur) {
-        mask = bitfill(cur->range);
-        if ((cur->ip & mask) == (ip & mask))
+        if (equal_ip_range(cur->ip, ip, cur->range))
             return true;
         cur = cur->next;
     }

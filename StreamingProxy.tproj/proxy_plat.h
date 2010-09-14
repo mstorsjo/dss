@@ -109,35 +109,35 @@ int service_ui(int sleep_ticks);
 void sleep_milliseconds(int ms);
 time_t microseconds();
 #define kPENDING_ADDRESS -2
-int name_to_ip_num(char *name, int *ip_num, int async);
-int get_remote_address(int skt, int *port);
-int get_local_address(int skt, int *port);
+int name_to_ip_num(char *name, struct sockaddr_storage *ip_num, int async);
+struct sockaddr_storage get_remote_address(int skt, int *port);
+struct sockaddr_storage get_local_address(int skt, int *port);
 int get_local_ip_address(void);
 bool isReadable(int fd);
 bool isWritable(int fd);
 
-int new_socket_udp(void);
-int new_socket_tcp(int is_listener);
+int new_socket_udp(int family);
+int new_socket_tcp(int family, int is_listener);
 void close_socket(int skt);
 void set_socket_reuse_address(int skt);
 void set_socket_max_buf(int skt);
 void make_socket_nonblocking(int skt);
-int bind_socket_to_address(int skt, int address, int port, int is_listener);
+int bind_socket_to_address(int skt, const struct sockaddr* address, int port, int is_listener);
 int listen_to_socket(int skt);
 int call_is_waiting(int skt, int *incoming_skt);
 int accept_connection(int from, int *to);
-int get_interface_addr(int skt);
+struct sockaddr_storage get_interface_addr(int skt);
 #if DO_ASYNC
 pascal void conn_finished_proc(void* contextPtr, OTEventCode code, OTResult /*result*/, void* /*cookie*/);
 int connect_to_address(void *context, OTNotifyProcPtr proc, int skt, int address, int port);
 #else
-int connect_to_address(int skt, int address, int port);
+int connect_to_address(int skt, struct sockaddr_storage address, int port);
 #endif
 
 int tcp_data_ready(int skt);
 
-int recv_udp(int skt, char *buf, int amt, int *fromAddress, int *fromPort);
-int send_udp(int skt, char *buf, int amt, int address, int port);
+int recv_udp(int skt, char *buf, int amt, struct sockaddr_storage *fromAddress, int *fromPort);
+int send_udp(int skt, char *buf, int amt, struct sockaddr_storage address, int port);
 int recv_tcp(int skt, char *buf, int amt);
 int send_tcp(int skt, char *buf, int amt);
 

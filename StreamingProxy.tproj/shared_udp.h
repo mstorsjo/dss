@@ -32,6 +32,8 @@
 #ifndef __SHARED_UDP_H__
 #define __SHARED_UDP_H__
 
+#include <sys/socket.h>
+
 #define MAX_SOCKET_NAME 32
 
 /**********************************************/
@@ -39,7 +41,7 @@ typedef int (*do_routine)(void * refCon, char *buf, int bufSize);
 
 typedef struct ipList {
     struct ipList   *next;
-    int     ip;
+    struct sockaddr_storage     ip;
     do_routine  what_to_do;
     void        *what_to_do_it_with;
 } ipList;
@@ -48,6 +50,7 @@ typedef struct shok {
     struct shok *next;
     int     socket;
     int     port;
+    struct sockaddr_storage fromIP;
     ipList      *ips;
     struct shok *sib;       // sibling - rtcp or rtp
 } shok;
@@ -55,7 +58,7 @@ typedef struct shok {
 typedef struct trans_pb {
     int     *status;    // set to 1 when needs to die
     shok        *send_from;
-    int     send_to_ip;
+    struct sockaddr_storage     send_to_ip;
     int     send_to_port;
     long long int   packetSendCount;
     long long int   nextDropPacket;
@@ -66,17 +69,17 @@ typedef struct trans_pb {
 } trans_pb;
 
 /**********************************************/
-ipList *find_ip_in_list(ipList *list, int ip);
-int add_ip_to_list(ipList **list, int ip);
-int remove_ip_from_list(ipList **list, int ip);
-shok *find_available_shok(int fromIP, int toIP, int withSib);
-int add_ips_to_shok(shok *theShok, int fromIP, int toIP, int withSib);
+ipList *find_ip_in_list(ipList *list, struct sockaddr_storage ip);
+int add_ip_to_list(ipList **list, struct sockaddr_storage ip);
+int remove_ip_from_list(ipList **list, struct sockaddr_storage ip);
+shok *find_available_shok(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib);
+int add_ips_to_shok(shok *theShok, struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib);
 void set_udp_port_min_and_max(int min, int max);
 int remove_shok(shok *theShok, int withSib);
-void remove_shok_ref(shok *theShok, int fromIP, int toIP, int withSib);
-shok *make_new_shok(int fromIP, int toIP, int withSib);
-int make_udp_port_pair(int fromIP, int toIP, shok **rtpSocket, shok **rtcpSocket);
-int upon_receipt_from(shok *theShok, int fromIP, do_routine doThis, void *withThis);
+void remove_shok_ref(shok *theShok, struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib);
+shok *make_new_shok(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, int withSib);
+int make_udp_port_pair(struct sockaddr_storage fromIP, struct sockaddr_storage toIP, shok **rtpSocket, shok **rtcpSocket);
+int upon_receipt_from(shok *theShok, struct sockaddr_storage fromIP, do_routine doThis, void *withThis);
 int service_shoks();
 int transfer_data(void *refCon, char *buf, int bufSize);
 

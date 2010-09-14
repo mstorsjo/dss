@@ -29,14 +29,22 @@
  * 
  */
 
+#include <sys/socket.h>
+#include "proxy_plat.h"
+
 /**********************************************/
-char *ip_to_string(int ip);
+char *ip_to_string(struct sockaddr_storage ip);
 int inet_aton_(char *s, int *retval);
 char *str_sep(char **stringp, char *delim);
 char *str_dup(char *str);
 int str_casecmp(char *str1, char *str2);
 int strn_casecmp(char *str1, char *str2, int l);
 
-int check_IP_cache(char *name, int *ip);
-int add_to_IP_cache(char *name, int ip);
+int check_IP_cache(char *name, struct sockaddr_storage *ip);
+int add_to_IP_cache(char *name, struct sockaddr_storage ip);
 char* get_line_str( char* strBuff, char *input, int buffSize );
+
+bool equal_ip(struct sockaddr_storage a, struct sockaddr_storage b);
+bool empty_ip(struct sockaddr_storage ip);
+bool special_ip(struct sockaddr_storage ip, int type);
+bool equal_ip_range(struct sockaddr_storage a, struct sockaddr_storage b, int range);
