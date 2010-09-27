@@ -59,9 +59,7 @@
 
 #include <unistd.h>
 
-#ifndef __MacOSX__
 #include "get_opt.h"
-#endif
 
 #include "revision.h"
 /**********************************************/
@@ -249,11 +247,7 @@ int main(int argc, char *argv[])
 
     //
     // read command line options
-#if __MacOSX__
-    while ((ch = getopt(argc, argv, gOptionsString)) != -1) 
-#else
     while ((ch = get_opt(argc, argv, gOptionsString)) != -1) 
-#endif
     {
         numOptions++;
         switch (ch) 
