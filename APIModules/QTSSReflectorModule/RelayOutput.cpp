@@ -132,7 +132,9 @@ RelayOutput::RelayOutput(SourceInfo* inInfo, UInt32 inWhichOutput, RelaySession*
     fValid(true),
     fOutgoingSDP(NULL),
     fAnnounceTask(NULL),
-    fRTSPOutputInfo(NULL)
+    fRTSPOutputInfo(NULL),
+    fRelaySessionObject(NULL),
+    fRelayOutputObject(NULL)
 {
     Assert(fNumStreams > 0);
 
