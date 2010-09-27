@@ -271,7 +271,7 @@ fi
 
 echo Building for $PLAT with $CPLUS
 
-if [ "${OSNAME}" = "Darwin"  ]; then
+if [ "${OSNAME}" = "Darwin"  ] && [ "${NOXCODE}" == "" ]; then
     BUILDTOOL=""
     ##xcodebuild should be the default for tiger
 	if [ -e /usr/bin/xcodebuild ] ; then
