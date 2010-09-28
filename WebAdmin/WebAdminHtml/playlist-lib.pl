@@ -659,6 +659,7 @@ sub CreatePlayListEntry {
     my $broadcastpassword;
     my $title;
     my $item;
+    my $port = $ENV{"QTSSADMINSERVER_QTSSPORT"};
 
     ($uname, $mode, $logging, $plr, $mr, $genre, $destipaddr, $broadcastusername, $broadcastpassword, $title) = @$arref;
     $plname = &playlistlib::EncodePLName($plname);
@@ -706,6 +707,7 @@ sub CreatePlayListEntry {
     print PLDFILE "play_mode $mode\n";
     print PLDFILE "destination_ip_address $destipaddr\n";
     if ($genre eq '') { # not a mp3 file
+    	print PLDFILE "rtsp_port $port\n";
     	print PLDFILE "#broadcast_name \"$title\"\n";
 		if ($mode eq "weighted_random" ) {
 			print PLDFILE "recent_movies_list_size $mr\n";
@@ -734,7 +736,7 @@ sub CreatePlayListEntry {
        if ($mode eq "weighted_random" ) {
         	print PLDFILE "recent_songs_list_size $mr\n";
        }
-    	print PLDFILE "destination_base_port 554\n";
+    	print PLDFILE "destination_base_port $port\n";
     	print PLDFILE "broadcast_mount_point \"$uname\"\n";
     	print PLDFILE "broadcast_name \"$title\"\n";
     	# temporary
