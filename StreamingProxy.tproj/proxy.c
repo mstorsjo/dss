@@ -59,9 +59,7 @@
 
 #include <unistd.h>
 
-#ifndef __MacOSX__
 #include "get_opt.h"
-#endif
 
 #include "revision.h"
 /**********************************************/
@@ -249,11 +247,7 @@ int main(int argc, char *argv[])
 
     //
     // read command line options
-#if __MacOSX__
-    while ((ch = getopt(argc, argv, gOptionsString)) != -1) 
-#else
     while ((ch = get_opt(argc, argv, gOptionsString)) != -1) 
-#endif
     {
         numOptions++;
         switch (ch) 
@@ -1366,12 +1360,12 @@ void service_session(rtsp_session *s)
                 if ((num = send_tcp(s->server_skt, s->soutbuf, s->amtInServerOutBuffer)) == SOCKET_ERROR) {
                     switch (GetLastSocketError(s->server_skt)) {
                         case EPIPE:         // connection broke
-                        case ENOTCONN:      // shut down
                         case ECONNRESET:
                             s->state = stServerShutdown;
                             break;
                         case EAGAIN:    // was busy - try again
                         case EINTR: // got interrupted - try again
+                        case ENOTCONN:      // not connected yet
                             break;
                         default:
                             ErrorString1("writing to server error (%d)\n", GetLastSocketError(s->server_skt));

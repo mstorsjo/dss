@@ -397,7 +397,7 @@ void RTSPRequest::ParseSessionHeader()
 Bool16 RTSPRequest::ParseNetworkModeSubHeader(StrPtrLen* inSubHeader)
 {
     static StrPtrLen sUnicast("unicast");
-    static StrPtrLen sMulticast("multiicast");
+    static StrPtrLen sMulticast("multicast");
     Bool16 result = false; // true means header was found
             
     if (!result && inSubHeader->EqualIgnoreCase(sUnicast))
