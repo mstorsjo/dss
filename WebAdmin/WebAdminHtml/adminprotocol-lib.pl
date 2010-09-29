@@ -34,6 +34,7 @@ package adminprotolib;
 # Vital libraries
 #use IO::Socket;
 use Socket;
+use Socket6;
 
 @weekdayStr = ( "SunStr", "MonStr", "TueStr", "WedStr", "ThuStr", "FriStr", "SatStr" );
 @monthStr = ( "JanStr", "FebStr", "MarStr", "AprStr", "MayStr", "JunStr", "JulStr", "AugStr", "SepStr", "OctStr", "NovStr", "DecStr" );
@@ -84,21 +85,24 @@ sub GetData
 	my %messages = %$messHash;
 	
     my $status = 500;
-    if(!($iaddr = inet_aton($remote))) {
-    	$_[0] = "$messages{'NoHostError'}: $remote";
-    	return $status;
+    my $tmpport;
+    @res = getaddrinfo($remote, $port, AF_UNSPEC, SOCK_STREAM);
+  while (1) {
+    if (scalar(@res) < 5) {
+        $_[0] = "$messages{'ConnectFailedError'}: $!";
+        return $status;
     }
-    $paddr = sockaddr_in($port, $iaddr);
-    $proto = getprotobyname('tcp');
-    if(!socket(CLIENT_SOCK, PF_INET, SOCK_STREAM, $proto)) {
+    ($family, $socktype, $proto, $paddr, $canonname, @res) = @res;
+    if(!socket(CLIENT_SOCK, $family, $socktype, $proto)) {
     	$_[0] = "$messages{'SocketFailedError'}: $!";
     	return $status;
     }
     if(!connect(CLIENT_SOCK, $paddr)) {
-     	$_[0] = "$messages{'ConnectFailedError'}: $!";
      	close (CLIENT_SOCK);
-     	return $status;
+     	next;
  	}
+    last;
+  }
  	
     # send request
     $request = "GET $uri HTTP/1.1\r\nUser-Agent: PerlScript\r\nAccept: */*\r\nConnection: close\r\n" . "$authheader\r\n";

@@ -37,6 +37,7 @@ if ($^O eq "MSWin32")
 # Require needed libraries
 package streamingadminserver;
 use Socket;
+use Socket6;
 use POSIX;
 use Sys::Hostname;
 #eval "use Net::SSLeay";
@@ -288,9 +289,9 @@ if(($config{'crtfile'} eq "") || ($config{'keyfile'} eq "") || !(-e $config{'crt
 	$ssl_available = 0;
 }
 
-if($config{'qtssIPAddress'} eq "localhost") {
-	$config{'qtssIPAddress'} = inet_ntoa(INADDR_LOOPBACK);
-}
+#if($config{'qtssIPAddress'} eq "localhost") {
+#	$config{'qtssIPAddress'} = inet_ntoa(INADDR_LOOPBACK);
+#}
 
 $passwordfile = $config{'keypasswordfile'};
 $keypassword = "";
@@ -420,14 +421,15 @@ if($config{'qtssAutoStart'} == 1) {
 # to it. If the server doesn't respond, look for the name of the 
 # streaming server binary in the config file and start it
 
-	if(!($iaddr = inet_aton($config{'qtssIPAddress'}))) { 
+	my @res = getaddrinfo($config{'qtssIPAddress'}, $config{'qtssPort'}, AF_UNSPEC, SOCK_STREAM);
+	if (scalar(@res) < 5) {
 		if($debug) {
 	   		print "No host: $config{'qtssIPAddress'}\n";
 		}
 	}
-	$paddr = sockaddr_in($config{'qtssPort'}, $iaddr);
-	$proto = getprotobyname('tcp');
-	if(!socket(TEST_SOCK, PF_INET, SOCK_STREAM, $proto)) {
+	my ($family, $socktype, $proto, $paddr, $canonname);
+	($family, $socktype, $proto, $paddr, $canonname, @res) = @res;
+	if(!socket(TEST_SOCK, $family, $socktype, $proto)) {
     	if($debug) {
 			print "Couldn't create socket to connect to the Streaming Server: $!\n";
     	}
@@ -557,12 +559,7 @@ if(($^O ne "MSWin32") && ($^O ne "darwin")) {
 
 		# Work out the hostname for this web server
 		if (!$config{'host'}) {
-			($myport, $myaddr) =
-				unpack_sockaddr_in(getsockname(SOCK));
-			$myname = gethostbyaddr($myaddr, AF_INET);
-			if ($myname eq "") {
-				$myname = inet_ntoa($myaddr);
-			}
+			($myname, $myport) = getnameinfo(getsockname(SOCK));
 			$host = $myname;
 		}
 		else { $host = $config{'host'}; }
@@ -577,10 +574,22 @@ if(($^O ne "MSWin32") && ($^O ne "darwin")) {
 	
 # Open main socket
 $proto = getprotobyname('tcp');
-$baddr = $config{"bind"} ? inet_aton($config{"bind"}) : INADDR_ANY;
+my $family = AF_INET;
+my $socktype = SOCK_STREAM;
+my $servaddr;
 $port = $config{"port"};
-$servaddr = sockaddr_in($port, $baddr);
-socket(MAIN, PF_INET, SOCK_STREAM, $proto) ||
+if ($config{"bind"}) {
+	my @res = getaddrinfo($config{"bind"}, $port, AF_UNSPEC, SOCK_STREAM);
+	if (scalar(@res) >= 5) {
+		my $canonname;
+		($family, $socktype, $proto, $servaddr, $canonname, @res) = @res;
+	} else {
+		$servaddr = sockaddr_in($port, INADDR_ANY);
+	}
+} else {
+	$servaddr = sockaddr_in($port, INADDR_ANY);
+}
+socket(MAIN, $family, $socktype, $proto) ||
 	die "Failed to open listening socket for Streaming Admin Server : $!\n";
 setsockopt(MAIN, SOL_SOCKET, SO_REUSEADDR, pack("l", 1));
 bind(MAIN, $servaddr) || die "Failed to start Streaming Admin Server.\n"
@@ -792,12 +801,7 @@ while(1) {
 		
 		    # Work out the hostname for this web server
 		    if (!$config{'host'}) {
-				($myport, $myaddr) =
-			    	unpack_sockaddr_in(getsockname(SOCK));
-				$myname = gethostbyaddr($myaddr, AF_INET);
-				if ($myname eq "") {
-				    $myname = inet_ntoa($myaddr);
-				}
+				($myname, $myport) = getnameinfo(getsockname(SOCK));
 				$host = $myname;
 		    }
 		    else { $host = $config{'host'}; }
@@ -847,12 +851,7 @@ while(1) {
 		
 				# Work out the hostname for this web server
 				if (!$config{'host'}) {
-				    ($myport, $myaddr) =
-						unpack_sockaddr_in(getsockname(SOCK));
-				    $myname = gethostbyaddr($myaddr, AF_INET);
-				    if ($myname eq "") {
-						$myname = inet_ntoa($myaddr);
-				    }
+				    ($myname, $myport) = getnameinfo(getsockname(SOCK));
 		    		$host = $myname;
 				}
 				else { $host = $config{'host'}; }
@@ -985,7 +984,7 @@ sub handle_request
 	if ($config{"cacheMessageFiles"} eq "0") {
 		&LoadMessageHashes();
 	}
-    $acptip = inet_ntoa((unpack_sockaddr_in($_[0]))[1]);  
+    ($acptip, $acptport) = getnameinfo($_[0], NI_NUMERICHOST);
     $datestr = &http_date(time());
     # Read the HTTP request and headers
     ($reqline = &read_line()) =~ s/\r|\n//g;
