@@ -8,6 +8,6 @@ Homepage: http://dss.macosforge.org/
 
 Package: darwin-streaming-server
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, libsocket6-perl
 Description: Darwin Streaming Server
  <insert long description, indented with spaces>
