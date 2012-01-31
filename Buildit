@@ -66,9 +66,9 @@ case $PLAT in
 
 	Linux.ppc)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
-		CPLUS=gcc
+		CPLUS=g++
 		CCOMP=gcc
-		LINKER='gcc'
+		LINKER='g++'
  		MAKE=make
  		
 		COMPILER_FLAGS="-D_REENTRANT -D__USE_POSIX -D__linuxppc__ -pipe"
@@ -89,9 +89,9 @@ case $PLAT in
 	Linux.i686 | \
 	Linux.x86_64)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
-		CPLUS=gcc
+		CPLUS=g++
 		CCOMP=gcc
-		LINKER='gcc'
+		LINKER='g++'
  		MAKE=make
  		
 		COMPILER_FLAGS="-D_REENTRANT -D__USE_POSIX -D__linux__ -pipe -D__STDC_LIMIT_MACROS"
@@ -113,9 +113,9 @@ case $PLAT in
 
 	Linux.mips)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
-		CPLUS=gcc
+		CPLUS=g++
 		CCOMP=gcc
-		LINKER='egcs'
+		LINKER='g++'
  		MAKE=make
  		
 		COMPILER_FLAGS="-D_REENTRANT -D__linux__ -Wno-multichar -pipe"
@@ -134,9 +134,9 @@ case $PLAT in
 
 	FreeBSD.i386)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
-		CPLUS=gcc
+		CPLUS=g++
 		CCOMP=gcc
-		LINKER="gcc"
+		LINKER="g++"
  		MAKE=make
  		
 		COMPILER_FLAGS=
@@ -185,9 +185,9 @@ case $PLAT in
 		
     HP-UX.*)
         echo "Configuring for the "$OSNAME" "$HARDWARENAME" platform"
-        CPLUS=gcc
+        CPLUS=g++
         CCOMP=gcc
-        LINKER=gcc
+        LINKER=g++
         MAKE=make
  
         COMPILER_FLAGS="-D__hpux__ -g -fPIC"
@@ -225,9 +225,9 @@ case $PLAT in
 	*)
 		echo "I don't know your platform. I'll assume this is a Linux x86 platform."
 		echo "Please edit the BuildServer script & PlatformHeader.h to add your platform."
-		CPLUS=gcc
+		CPLUS=g++
 		CCOMP=gcc
-		LINKER='egcs'
+		LINKER='g++'
  		MAKE=make
  		
 		COMPILER_FLAGS=-D__linux__
