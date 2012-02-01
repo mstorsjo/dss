@@ -256,8 +256,6 @@ class IPComponentStr
     StrPtrLen   fAddressComponent[kNumComponentsV6];
     Bool16      fIsValid;
     int         fFamily;
-    static IPComponentStr sLocalIPCompStr;
-    static IPComponentStr sLocalIPCompStrV6;
 
     IPComponentStr() : fIsValid(false) {}
     IPComponentStr(char *theAddress);
@@ -274,7 +272,10 @@ inline  Bool16      IsLocal();
 
 Bool16  IPComponentStr::IsLocal()
 {
-    if (this->Equal(&sLocalIPCompStr) || this->Equal(&sLocalIPCompStrV6))
+    IPComponentStr localIPCompStr("127.0.0.*");
+    IPComponentStr localIPCompStrV6("::1");
+
+    if (this->Equal(&localIPCompStr) || this->Equal(&localIPCompStrV6))
         return true;
     
     return false;

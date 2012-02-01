@@ -1066,9 +1066,6 @@ QTSS_Error QTSSModuleUtils::AuthorizeRequest(QTSS_RTSPRequestObject theRTSPReque
 
 
 
-IPComponentStr IPComponentStr::sLocalIPCompStr("127.0.0.*");
-IPComponentStr IPComponentStr::sLocalIPCompStrV6("::1");
-
 IPComponentStr::IPComponentStr(char *theAddressPtr)
 {
     StrPtrLen sourceStr(theAddressPtr);
