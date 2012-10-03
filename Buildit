@@ -2,7 +2,7 @@
  
 set -e
 
-VERSION=`grep kVersion revision.h | grep -o [:0123456789:].*[:0123456789:]`
+VERSION=`grep kVersion revision.h | grep -o [0123456789].*[0123456789]`
 ##Build script for Darwin Streaming Server
 if [ `uname` = "Darwin" ] ; then
     PLATFORM=dss
