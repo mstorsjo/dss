@@ -218,6 +218,7 @@ case $PLAT in
  		;;
 
 	"Darwin.i386" | \
+	"Darwin.x86_64" | \
 	"Darwin.Power Macintosh")
          echo "Configuring for "$OSNAME" on "$HARDWARENAME". This is an OS X build of the QuickTimeStreamingServer."
  	
