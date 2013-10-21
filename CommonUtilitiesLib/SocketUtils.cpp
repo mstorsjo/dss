@@ -104,7 +104,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     while( currentifap != NULL )
     {
         sockaddr = currentifap->ifa_addr;
-        if (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6)
+        if (sockaddr && (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6))
             sNumIPAddrs++;
         currentifap = currentifap->ifa_next;
     }
@@ -122,7 +122,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     {
         sockaddr = currentifap->ifa_addr;
     
-        if (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6)
+        if (sockaddr && (sockaddr->sa_family == AF_INET || sockaddr->sa_family == AF_INET6))
         {
             //store the IP addr
             sIPAddrInfoArray[addrArrayIndex].fIPAddr = Address(sockaddr);
