@@ -100,7 +100,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     while( currentifap != NULL )
     {
         sockaddr = (struct sockaddr_in*)currentifap->ifa_addr;
-        if (sockaddr->sin_family == AF_INET)
+        if (sockaddr && sockaddr->sin_family == AF_INET)
             sNumIPAddrs++;
         currentifap = currentifap->ifa_next;
     }
@@ -118,7 +118,7 @@ void SocketUtils::Initialize(Bool16 lookupDNSName)
     {
         sockaddr = (struct sockaddr_in*)currentifap->ifa_addr;
     
-        if (sockaddr->sin_family == AF_INET)
+        if (sockaddr && sockaddr->sin_family == AF_INET)
         {
             char* theAddrStr = ::inet_ntoa(sockaddr->sin_addr);
 
