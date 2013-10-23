@@ -79,6 +79,7 @@ static QTSS_AttributeID         sExpectedDigitFilenameErr   =   qtssIllegalAttrI
 static QTSS_AttributeID         sReflectorBadTrackIDErr     =   qtssIllegalAttrID;
 static QTSS_AttributeID         sDuplicateBroadcastStreamErr=   qtssIllegalAttrID;
 static QTSS_AttributeID         sClientBroadcastSessionAttr =   qtssIllegalAttrID;
+static QTSS_AttributeID         sAnnouncedFileNameAttr      =   qtssIllegalAttrID;
 static QTSS_AttributeID         sRTSPBroadcastSessionAttr   =   qtssIllegalAttrID;
 static QTSS_AttributeID         sAnnounceRequiresSDPinNameErr  = qtssIllegalAttrID;
 static QTSS_AttributeID         sAnnounceDisabledNameErr    = qtssIllegalAttrID;
@@ -331,6 +332,7 @@ QTSS_Error Register(QTSS_Register_Params* inParams)
     static char*        sRequestBufferName  = "QTSSReflectorModuleRequestBuffer";
     static char*        sRequestBufferLenName= "QTSSReflectorModuleRequestBufferLen";
     static char*        sBroadcasterSessionName= "QTSSReflectorModuleBroadcasterSession";
+    static char*        sAnnouncedFileName     = "QTSSReflectorModuleAnnouncedFileName";
     static char*        sKillClientsEnabledName= "QTSSReflectorModuleTearDownClients";
 
     static char*        sRTPInfoWaitTime         = "QTSSReflectorModuleRTPInfoWaitTime";
@@ -355,6 +357,9 @@ QTSS_Error Register(QTSS_Register_Params* inParams)
     (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sBroadcasterSessionName, NULL, qtssAttrDataTypeVoidPointer);
     (void)QTSS_IDForAttr(qtssClientSessionObjectType, sBroadcasterSessionName, &sClientBroadcastSessionAttr);
     
+    (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sAnnouncedFileName, NULL, qtssAttrDataTypeCharArray);
+    (void)QTSS_IDForAttr(qtssClientSessionObjectType, sAnnouncedFileName, &sAnnouncedFileNameAttr);
+
     (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sKillClientsEnabledName, NULL, qtssAttrDataTypeBool16);
     (void)QTSS_IDForAttr(qtssClientSessionObjectType, sKillClientsEnabledName, &sKillClientsEnabledAttr);
  
@@ -1082,6 +1087,7 @@ QTSS_Error DoAnnounce(QTSS_StandardRTSP_Params* inParams)
         qtss_fprintf(theSDPFile, "%s", mediaHeaders);
         ::fflush(theSDPFile);
         ::fclose(theSDPFile);   
+        QTSS_SetValue(inParams->inClientSession, sAnnouncedFileNameAttr, 0, theFullPath.Ptr, theFullPath.Len);
     }
     else
     {   return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientForbidden,0);
@@ -1961,6 +1967,11 @@ QTSS_Error DestroySession(QTSS_ClientSessionClosing_Params* inParams)
     RTPSessionOutput**  theOutput = NULL;
     ReflectorOutput*    outputPtr = NULL;
     ReflectorSession*   theSession = NULL;
+
+    char* announcedFileName = NULL;
+    QTSS_GetValueAsString(inParams->inClientSession, sAnnouncedFileNameAttr, 0, &announcedFileName);
+    QTSS_RemoveValue(inParams->inClientSession, sAnnouncedFileNameAttr, 0);
+    QTSSCharArrayDeleter announcedFileNameDeleter(announcedFileName);
     
     OSMutexLocker locker (sSessionMap->GetMutex());
     
@@ -1996,6 +2007,14 @@ QTSS_Error DestroySession(QTSS_ClientSessionClosing_Params* inParams)
     }
     else
     {
+        if (announcedFileName)
+        {
+            // No broadcaster session set up yet, but a file was announced, which should be deleted.
+            // This probably isn't right if one wants to support doing ANNOUNCE
+            // in a separate session. (Supporting that would probably involve
+            // checking IsRTSPControlled().)
+            ::unlink(announcedFileName);
+        }
         theLen = 0;
         theErr = QTSS_GetValuePtr(inParams->inClientSession, sOutputAttr, 0, (void**)&theOutput, &theLen);
         if ((theErr != QTSS_NoErr) || (theLen != sizeof(RTPSessionOutput*)) || (theOutput == NULL) || (*theOutput == NULL))
