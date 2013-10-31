@@ -79,6 +79,7 @@ static QTSS_AttributeID         sExpectedDigitFilenameErr   =   qtssIllegalAttrI
 static QTSS_AttributeID         sReflectorBadTrackIDErr     =   qtssIllegalAttrID;
 static QTSS_AttributeID         sDuplicateBroadcastStreamErr=   qtssIllegalAttrID;
 static QTSS_AttributeID         sClientBroadcastSessionAttr =   qtssIllegalAttrID;
+static QTSS_AttributeID         sAnnouncedFileNameAttr      =   qtssIllegalAttrID;
 static QTSS_AttributeID         sRTSPBroadcastSessionAttr   =   qtssIllegalAttrID;
 static QTSS_AttributeID         sAnnounceRequiresSDPinNameErr  = qtssIllegalAttrID;
 static QTSS_AttributeID         sAnnounceDisabledNameErr    = qtssIllegalAttrID;
@@ -331,6 +332,7 @@ QTSS_Error Register(QTSS_Register_Params* inParams)
     static char*        sRequestBufferName  = "QTSSReflectorModuleRequestBuffer";
     static char*        sRequestBufferLenName= "QTSSReflectorModuleRequestBufferLen";
     static char*        sBroadcasterSessionName= "QTSSReflectorModuleBroadcasterSession";
+    static char*        sAnnouncedFileName     = "QTSSReflectorModuleAnnouncedFileName";
     static char*        sKillClientsEnabledName= "QTSSReflectorModuleTearDownClients";
 
     static char*        sRTPInfoWaitTime         = "QTSSReflectorModuleRTPInfoWaitTime";
@@ -355,6 +357,9 @@ QTSS_Error Register(QTSS_Register_Params* inParams)
     (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sBroadcasterSessionName, NULL, qtssAttrDataTypeVoidPointer);
     (void)QTSS_IDForAttr(qtssClientSessionObjectType, sBroadcasterSessionName, &sClientBroadcastSessionAttr);
     
+    (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sAnnouncedFileName, NULL, qtssAttrDataTypeCharArray);
+    (void)QTSS_IDForAttr(qtssClientSessionObjectType, sAnnouncedFileName, &sAnnouncedFileNameAttr);
+
     (void)QTSS_AddStaticAttribute(qtssClientSessionObjectType, sKillClientsEnabledName, NULL, qtssAttrDataTypeBool16);
     (void)QTSS_IDForAttr(qtssClientSessionObjectType, sKillClientsEnabledName, &sKillClientsEnabledAttr);
  
@@ -739,6 +744,22 @@ QTSS_Error ProcessRTSPRequest(QTSS_StandardRTSP_Params* inParams)
     return QTSS_NoErr;
 }
 
+void ReleaseSession(ReflectorSession* inSession)
+{
+    OSRef* theSessionRef = inSession->GetRef();
+    if (theSessionRef == NULL)
+        return;
+
+    if (theSessionRef->GetRefCount() > 0)
+        sSessionMap->Release(theSessionRef);
+
+    if (theSessionRef->GetRefCount() == 0)
+    {
+        sSessionMap->UnRegister(theSessionRef);
+        delete inSession;
+    }
+}
+
 ReflectorSession* DoSessionSetup(QTSS_StandardRTSP_Params* inParams, QTSS_AttributeID inPathType,Bool16 isPush, Bool16 *foundSessionPtr, char** resultFilePath)
 {
     char* theFullPathStr = NULL;
@@ -1086,6 +1107,7 @@ QTSS_Error DoAnnounce(QTSS_StandardRTSP_Params* inParams)
         qtss_fprintf(theSDPFile, "%s", mediaHeaders);
         ::fflush(theSDPFile);
         ::fclose(theSDPFile);   
+        QTSS_SetValue(inParams->inClientSession, sAnnouncedFileNameAttr, 0, theFullPath.Ptr, theFullPath.Len);
     }
     else
     {   return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientForbidden,0);
@@ -1210,6 +1232,7 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParams)
     checkedSDPContainer.SetSDPBuffer( &editedSDPSPL );  
     if (!checkedSDPContainer.IsSDPBufferValid())
     {  
+        ReleaseSession(theSession);
         return QTSSModuleUtils::SendErrorResponseWithMessage(inParams->inRTSPRequest, qtssUnsupportedMediaType, &sSDPNotValidMessage);
     }
             
@@ -1243,6 +1266,8 @@ QTSS_Error DoDescribe(QTSS_StandardRTSP_Params* inParams)
                                 kCacheControlHeader.Ptr, kCacheControlHeader.Len);
     QTSSModuleUtils::SendDescribeResponse(inParams->inRTSPRequest, inParams->inClientSession,
                                             &theDescribeVec[0], 3, sessLen + mediaLen ); 
+    // The session wasn't stored anywhere, so release it here
+    ReleaseSession(theSession);
     return QTSS_NoErr;
 }
 
@@ -1381,13 +1406,13 @@ ReflectorSession* FindOrCreateSession(StrPtrLen* inPath, QTSS_StandardRTSP_Param
         Assert(theErr == QTSS_NoErr);
 
         //unless we do this, the refcount won't increment (and we'll delete the session prematurely
-        if (!isPush)
         {   OSRef* debug = sSessionMap->Resolve(inPath);
             Assert(debug == theSession->GetRef());
         }
     }
     else
     {
+        theSession = (ReflectorSession*)theSessionRef->GetObject();
         // Check if broadcast is allowed before doing anything else
         // At this point we know it is a definitely a reflector session
         // It is either incoming automatic broadcast setup or a client setup to view broadcast
@@ -1395,6 +1420,7 @@ ReflectorSession* FindOrCreateSession(StrPtrLen* inPath, QTSS_StandardRTSP_Param
         // back
         if (!AllowBroadcast(inParams->inRTSPRequest))
         {
+            ReleaseSession(theSession);
             (void) QTSSModuleUtils::SendErrorResponseWithMessage(inParams->inRTSPRequest, qtssClientForbidden, &sBroadcastNotAllowed);
             return NULL;
         }
@@ -1410,26 +1436,34 @@ ReflectorSession* FindOrCreateSession(StrPtrLen* inPath, QTSS_StandardRTSP_Param
         OSCharArrayDeleter charArrayDeleter(theFileData.Ptr);
             
         if (theFileData.Len <= 0)
+        {
+            ReleaseSession(theSession);
             return NULL;
+        }
         
         theInfo = NEW SDPSourceInfo(theFileData.Ptr, theFileData.Len);
-        if (theInfo == NULL) 
+        if (theInfo == NULL)
+        {
+            ReleaseSession(theSession);
             return NULL;
+        }
       
         if (!InfoPortsOK(inParams, theInfo, inPath))
         {   delete theInfo;
+            ReleaseSession(theSession);
             return NULL;
         }
         
         delete theInfo;
         
-        theSession = (ReflectorSession*)theSessionRef->GetObject(); 
         if (isPush && theSession)
         {
             UInt32 theSetupFlag = ReflectorSession::kMarkSetup | ReflectorSession::kIsPushSession;
             QTSS_Error theErr = theSession->SetupReflectorSession(NULL, inParams, theSetupFlag);
             if (theErr != QTSS_NoErr)
-            {   return NULL;
+            {
+                ReleaseSession(theSession);
+                return NULL;
             }
         }
     }
@@ -1440,11 +1474,17 @@ ReflectorSession* FindOrCreateSession(StrPtrLen* inPath, QTSS_StandardRTSP_Param
 }
 
 // ONLY call when performing a setup.
-void DeleteReflectorPushSession(QTSS_StandardRTSP_Params* inParams, ReflectorSession* theSession, Bool16 foundSession)
+void DeleteReflectorPushSession(QTSS_StandardRTSP_Params* inParams, ReflectorSession* theSession, Bool16 foundSession, Bool16 broadcastSessionSet)
 {
     ReflectorSession* stopSessionProcessing = NULL;
     QTSS_Error theErr  = QTSS_SetValue(inParams->inClientSession, sClientBroadcastSessionAttr, 0, &stopSessionProcessing, sizeof(stopSessionProcessing));
     Assert(theErr == QTSS_NoErr);
+
+    if (!broadcastSessionSet)
+    {
+        // This session hasn't been stored in sClientBroadcastSessionAttr yet, so release it
+        ReleaseSession(theSession);
+    }
 
     if (foundSession) 
         return; // we didn't allocate the session so don't delete
@@ -1493,7 +1533,7 @@ QTSS_Error DoSetup(QTSS_StandardRTSP_Params* inParams)
     UInt32 *transportModePtr = NULL;
     QTSS_Error theErr  = QTSS_GetValuePtr(inParams->inRTSPRequest, qtssRTSPReqTransportMode, 0, (void**)&transportModePtr, &theLen);
 	Bool16 isPush = (transportModePtr != NULL && *transportModePtr == qtssRTPTransportModeRecord) ? true : false;
-    Bool16 foundSession = false;
+    Bool16 foundSession = false, broadcastSessionSet = false;
     
     // Check to see if we have a RTPSessionOutput for this Client Session. If we don't,
     // we should make one
@@ -1521,7 +1561,12 @@ QTSS_Error DoSetup(QTSS_StandardRTSP_Params* inParams)
         }
         else 
         {           
-            theSession = DoSessionSetup(inParams, qtssRTSPReqFilePathTrunc,isPush,&foundSession); 
+            theLen = sizeof(theSession);
+            theErr = QTSS_GetValue(inParams->inClientSession, sClientBroadcastSessionAttr, 0, &theSession, &theLen);
+            if (theSession == NULL)
+                theSession = DoSessionSetup(inParams, qtssRTSPReqFilePathTrunc,isPush,&foundSession);
+            else
+                broadcastSessionSet = true;
             if (theSession == NULL)
                 return QTSS_RequestFailed;  
                 
@@ -1546,7 +1591,7 @@ QTSS_Error DoSetup(QTSS_StandardRTSP_Params* inParams)
     if (theDigitStr == NULL)
     {
         if (isPush)
-            DeleteReflectorPushSession(inParams,theSession, foundSession);
+            DeleteReflectorPushSession(inParams,theSession, foundSession, broadcastSessionSet);
         return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientBadRequest,sExpectedDigitFilenameErr);
     }
     
@@ -1564,14 +1609,14 @@ QTSS_Error DoSetup(QTSS_StandardRTSP_Params* inParams)
         // If theStreamInfo is NULL, we don't have a legit track, so return an error
         if (theStreamInfo == NULL)
         {   
-            DeleteReflectorPushSession(inParams,theSession, foundSession);
+            DeleteReflectorPushSession(inParams,theSession, foundSession, broadcastSessionSet);
             return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientBadRequest,
                                                         sReflectorBadTrackIDErr);
         }
         
         if (!sAllowDuplicateBroadcasts && theStreamInfo->fSetupToReceive) 
         {
-            DeleteReflectorPushSession(inParams,theSession, foundSession);  
+            DeleteReflectorPushSession(inParams,theSession, foundSession, broadcastSessionSet);
             return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssPreconditionFailed, sDuplicateBroadcastStreamErr);
         }
 
@@ -1585,7 +1630,7 @@ QTSS_Error DoSetup(QTSS_StandardRTSP_Params* inParams)
         Assert(theErr == QTSS_NoErr);
         if (theErr != QTSS_NoErr)
         {   
-            DeleteReflectorPushSession(inParams,theSession, foundSession);
+            DeleteReflectorPushSession(inParams,theSession, foundSession, broadcastSessionSet);
             return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientBadRequest, 0);
         }
             
@@ -1818,6 +1863,10 @@ QTSS_Error DoPlay(QTSS_StandardRTSP_Params* inParams, ReflectorSession* inSessio
         {   
              return QTSSModuleUtils::SendErrorResponse(inParams->inRTSPRequest, qtssClientBadRequest, 0);
         }
+        // Release the session again - we don't want to keep any reference count for
+        // this particular pointer since we can't access inParams->inRTSPSession in DestroySession.
+        // Most of the code above could probably be removed to achieve the same.
+        ReleaseSession((ReflectorSession*)debug->GetObject());
         
     
         KeepSession(inParams->inRTSPRequest,true);
@@ -1965,6 +2014,11 @@ QTSS_Error DestroySession(QTSS_ClientSessionClosing_Params* inParams)
     RTPSessionOutput**  theOutput = NULL;
     ReflectorOutput*    outputPtr = NULL;
     ReflectorSession*   theSession = NULL;
+
+    char* announcedFileName = NULL;
+    QTSS_GetValueAsString(inParams->inClientSession, sAnnouncedFileNameAttr, 0, &announcedFileName);
+    QTSS_RemoveValue(inParams->inClientSession, sAnnouncedFileNameAttr, 0);
+    QTSSCharArrayDeleter announcedFileNameDeleter(announcedFileName);
     
     OSMutexLocker locker (sSessionMap->GetMutex());
     
@@ -2000,6 +2054,14 @@ QTSS_Error DestroySession(QTSS_ClientSessionClosing_Params* inParams)
     }
     else
     {
+        if (announcedFileName)
+        {
+            // No broadcaster session set up yet, but a file was announced, which should be deleted.
+            // This probably isn't right if one wants to support doing ANNOUNCE
+            // in a separate session. (Supporting that would probably involve
+            // checking IsRTSPControlled().)
+            ::unlink(announcedFileName);
+        }
         theLen = 0;
         theErr = QTSS_GetValuePtr(inParams->inClientSession, sOutputAttr, 0, (void**)&theOutput, &theLen);
         if ((theErr != QTSS_NoErr) || (theLen != sizeof(RTPSessionOutput*)) || (theOutput == NULL) || (*theOutput == NULL))
@@ -2060,14 +2122,11 @@ void RemoveOutput(ReflectorOutput* inOutput, ReflectorSession* inSession, Bool16
         {               
             //qtss_printf("QTSSReflectorModule.cpp:RemoveOutput UnRegister session =%p refcount=%"_U32BITARG_"\n", theSessionRef, theSessionRef->GetRefCount() ) ;       
             
-            for (UInt32 x = 0; x < inSession->GetNumStreams(); x++)
+            // Release once - we only retain once per session regardless of the number of SETUP requests
             {
-                if (inSession->GetStreamByIndex(x) == NULL)
-                    continue; 
-                    
                 Assert(theSessionRef->GetRefCount() > 0) //this shouldn't happen.
                 if (theSessionRef->GetRefCount() > 0)
-                    sSessionMap->Release(theSessionRef); //  one of the sessions on the ref is ending so decrement the count for each valid stream
+                    sSessionMap->Release(theSessionRef);
             }
             
             if (theSessionRef->GetRefCount() == 0)
