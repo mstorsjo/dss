@@ -73,7 +73,7 @@
     #define QT_PATH_SEPARATOR       '/'
 
 
-#include "/System/Library/Frameworks/CoreServices.framework/Headers/../Frameworks/CarbonCore.framework/Headers/MacTypes.h"
+#include <MacTypes.h>
 
 #define kSInt16_Max (SInt16) SHRT_MAX
 #define kUInt16_Max (UInt16) USHRT_MAX
