@@ -41,6 +41,7 @@
 // Framework Headers
 #include <DirectoryService/DirServicesTypes.h>
 #include <DirectoryService/DirServicesUtils.h>
+#include <cstring>
 
 // Project Headers
 #include "CDirService.h"
