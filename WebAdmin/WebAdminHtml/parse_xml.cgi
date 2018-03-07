@@ -23,14 +23,14 @@
 # @APPLE_LICENSE_HEADER_END@
 #
 
-require('tag_vals.pl');
-require('tag_types.pl');
-require('tag_formats.pl');
-require('adminprotocol-lib.pl');
-require('cgi-lib.pl');
-require('playlist-lib.pl');
-require('relayxmlparser.pl');
-require('password-utils.pl');
+require('./tag_vals.pl');
+require('./tag_types.pl');
+require('./tag_formats.pl');
+require('./adminprotocol-lib.pl');
+require('./cgi-lib.pl');
+require('./playlist-lib.pl');
+require('./relayxmlparser.pl');
+require('./password-utils.pl');
 
 # Get the server name, QTSS IP address, and Port from ENV hash
 $servername = $ENV{"SERVER_SOFTWARE"};

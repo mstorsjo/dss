@@ -27,7 +27,7 @@
 #
 #---------------------------------------------------------
 
-require ('playlist-lib.pl');
+require ('./playlist-lib.pl');
 
 package adminprotolib;
 
