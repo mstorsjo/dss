@@ -38,16 +38,16 @@ use Socket;
 @weekdayStr = ( "SunStr", "MonStr", "TueStr", "WedStr", "ThuStr", "FriStr", "SatStr" );
 @monthStr = ( "JanStr", "FebStr", "MarStr", "AprStr", "MayStr", "JunStr", "JulStr", "AugStr", "SepStr", "OctStr", "NovStr", "DecStr" );
 
-$enMessageHash = $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};
-$deMessageHash = $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};
-$jaMessageHash = $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};
-$frMessageHash = $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};
+$enMessageHash = $streamingadminserver::enMessageHash;
+$deMessageHash = $streamingadminserver::enMessageHash;
+$jaMessageHash = $streamingadminserver::enMessageHash;
+$frMessageHash = $streamingadminserver::enMessageHash;
 
 # GetMessageHash()
 # Returns the messages hash given the language
 sub GetMessageHash 
 {
-	return $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};  
+	return $streamingadminserver::enMessageHash;
 }
 
 # GetGenreArray()
