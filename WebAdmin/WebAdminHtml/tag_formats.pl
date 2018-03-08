@@ -42,7 +42,7 @@
 # Returns the messages hash given the language
 sub GetMessageHash 
 {
-	return $ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"};  
+	return $streamingadminserver::enMessageHash;
 }
 
 sub runFormatter {

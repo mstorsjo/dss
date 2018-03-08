@@ -27,7 +27,7 @@
 #
 #---------------------------------------------------------
 
-require('adminprotocol-lib.pl');
+require('./adminprotocol-lib.pl');
 
 package passwordutils;
 
