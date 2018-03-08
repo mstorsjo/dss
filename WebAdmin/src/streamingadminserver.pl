@@ -1416,10 +1416,10 @@ sub handle_request
 		$ENV{"QTSSADMINSERVER_QTSSADMIN"} = $config{"qtssAdmin"};
 		$ENV{"QTSSADMINSERVER_HELPURL"} = $config{"helpurl"};
 		$ENV{"QTSSADMINSERVER_TEMPFILELOC"} = $config{"tempfileloc"};
-		$ENV{"QTSSADMINSERVER_EN_MESSAGEHASH"} = $messages{"en"};
-		$ENV{"QTSSADMINSERVER_DE_MESSAGEHASH"} = $messages{"de"};
-		$ENV{"QTSSADMINSERVER_JA_MESSAGEHASH"} = $messages{"ja"};
-		$ENV{"QTSSADMINSERVER_FR_MESSAGEHASH"} = $messages{"fr"};
+		$enMessageHash = $messages{"en"};
+		$deMessageHash = $messages{"de"};
+		$jaMessageHash = $messages{"ja"};
+		$frMessageHash = $messages{"fr"};
 		$ENV{"GENREFILE"} = 'genres';
 		$ENV{"COOKIES"} = $header{'cookie'};
 		$ENV{"COOKIE_EXPIRE_SECONDS"} = $config{"cookieExpireSeconds"};

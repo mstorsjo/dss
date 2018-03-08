@@ -37,6 +37,7 @@ cp Documentation/3rdPartyAcknowledgements.rtf $DEST/var/streaming
 cp Documentation/readme.txt $DEST/var/streaming
 
 cp WebAdmin/src/streamingadminserver.pl $DEST/sbin
+rm -rf $DEST/var/streaming/AdminHtml
 cp -R WebAdmin/WebAdminHtml $DEST/var/streaming/AdminHtml
 
 username=`whoami`

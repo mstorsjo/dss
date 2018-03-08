@@ -22,7 +22,7 @@
 #
 # @APPLE_LICENSE_HEADER_END@
 
-require('playlist-lib.pl');
+require('./playlist-lib.pl');
 
 
 my $pldir = $config{'plroot'};
